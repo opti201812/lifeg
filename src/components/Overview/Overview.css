@@ -1,0 +1,21 @@
+.alarm-card {
+   border: 2px solid red;
+   animation: blink 1s infinite;
+}
+
+.alarm-text {
+   color: red;
+   font-weight: bold;
+}
+
+@keyframes blink {
+   0% {
+      border-color: red;
+   }
+   50% {
+      border-color: transparent;
+   }
+   100% {
+      border-color: red;
+   }
+}
