@@ -3,18 +3,25 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 interface User {
    id: number;
    name: string;
+   gender: string;
+   age: number;
+   role: "user" | "admin";
 }
 
 interface UserState {
    users: User[];
    currentUser: User | null;
    isAuthenticated: boolean;
+   role: "user" | "admin";
+   name: string;
 }
 
 const initialState: UserState = {
    users: [],
    currentUser: null,
    isAuthenticated: false,
+   role: "user",
+   name: "",
 };
 
 const userSlice = createSlice({
@@ -26,6 +33,9 @@ const userSlice = createSlice({
       },
       setCurrentUser: (state, action: PayloadAction<User>) => {
          state.currentUser = action.payload;
+         state.role = action.payload.role;
+         state.name = action.payload.name;
+         // 假设登录成功后，用户的角色为admin
          state.isAuthenticated = true;
       },
       addUser: (state, action: PayloadAction<User>) => {
@@ -37,6 +47,8 @@ const userSlice = createSlice({
       logout: (state) => {
          state.currentUser = null;
          state.isAuthenticated = false;
+         state.role = "user";
+         state.name = "";
       },
    },
 });

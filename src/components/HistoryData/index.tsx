@@ -1,3 +1,4 @@
+// components/HistoryData/index.tsx
 import React, { useState, useEffect } from "react";
 import { Table, Button, Input, DatePicker, Select, Space, message, Form, Row, Col } from "antd";
 import { SearchOutlined, ReloadOutlined, DownloadOutlined } from "@ant-design/icons";
@@ -7,20 +8,18 @@ import config from "../../config";
 
 const { RangePicker } = DatePicker;
 
-interface AlarmData {
+interface HistoricalData {
    personnelId: number;
    name: string;
    heartRate: number;
    breathRate: number;
    distance: number;
-   alarmLevel: string;
-   handlingMethod: string;
-   handlingTime: string;
+   isAlarm: boolean;
    dateTime: string;
 }
 
-const AlarmDisplay: React.FC = () => {
-   const [alarmData, setAlarmData] = useState<AlarmData[]>([]);
+const HistoryData: React.FC = () => {
+   const [historicalData, setHistoricalData] = useState<HistoricalData[]>([]);
    const [personnelOptions, setPersonnelOptions] = useState<
       {
          value: number;
@@ -31,9 +30,8 @@ const AlarmDisplay: React.FC = () => {
    const [filters, setFilters] = useState({
       personnelId: null,
       name: "",
-      dateRange: null,
-      alarmLevel: null,
-      handlingTimeRange: null,
+      dateRange: [dayjs().subtract(1, "day"), dayjs()], // Initial date range for the last 24 hours
+      isAlarm: null,
    });
 
    useEffect(() => {
@@ -54,42 +52,34 @@ const AlarmDisplay: React.FC = () => {
 
       fetchPersonnelOptions();
 
-      // Fetch initial alarm data
-      handleSearch();
+      // Fetch initial historical data
+      handleSearch(); // Call handleSearch to fetch initial data
    }, []);
 
    const handleSearch = async () => {
       try {
          const queryParams = new URLSearchParams();
-         if (filters.personnelId !== null) {
-            queryParams.append("personnelId", (filters.personnelId as number).toString());
+         console.log("==> ~ queryParams:", queryParams);
+         console.log("==> ~ filters:", filters);
+         if (filters?.personnelId) {
+            queryParams.append("personnelId", (filters?.personnelId as number).toString());
          }
-         if (filters.name) {
+         if (filters?.name) {
             queryParams.append("name", filters.name);
          }
-         if (filters.dateRange && (filters.dateRange as dayjs.Dayjs[]).length === 2) {
+         if (filters?.dateRange && (filters.dateRange as dayjs.Dayjs[]).length === 2) {
             queryParams.append("startDate", (filters.dateRange[0] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss"));
             queryParams.append("endDate", (filters.dateRange[1] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss"));
          }
-         if (filters.alarmLevel) {
-            queryParams.append("alarmLevel", filters.alarmLevel);
-         }
-         if (filters.handlingTimeRange && (filters.handlingTimeRange as dayjs.Dayjs[]).length === 2) {
-            queryParams.append(
-               "handlingStart",
-               (filters.handlingTimeRange[0] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss")
-            );
-            queryParams.append(
-               "handlingEnd",
-               (filters.handlingTimeRange[1] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss")
-            );
+         if (filters?.isAlarm !== null && filters?.isAlarm !== undefined) {
+            queryParams.append("isAlarm", (filters.isAlarm as boolean).toString());
          }
 
-         const response = await axios.get(`${config.backend.url}/history/alarms?${queryParams.toString()}`); // 假设后端接口为 /history/alarms
-         setAlarmData(response.data || []);
+         const response = await axios.get(`${config.backend.url}/history?${queryParams.toString()}`);
+         setHistoricalData(response.data || []);
       } catch (error) {
-         console.error("Error fetching alarm data:", error);
-         message.error("Failed to load alarm data");
+         console.error("Error fetching historical data:", error);
+         message.error("Failed to load historical data");
       }
    };
 
@@ -97,45 +87,54 @@ const AlarmDisplay: React.FC = () => {
       setFilters({
          personnelId: null,
          name: "",
-         dateRange: null,
-         alarmLevel: null,
-         handlingTimeRange: null, // 新增：重置处理时间筛选
+         dateRange: [dayjs().subtract(1, "day"), dayjs()], // Reset to the last 24 hours
+         isAlarm: null,
       });
+      form.resetFields();
    };
 
    const handleExport = () => {
       // Implement your export logic here (e.g., generate CSV or Excel file)
-      console.log("Exporting data:", alarmData);
+      console.log("Exporting data:", historicalData);
    };
 
    const columns = [
-      { title: "人员编号", dataIndex: "personnel_id", key: "personnelId" },
+      { title: "人员编号", dataIndex: "personnel_id", key: "personnel_id" },
       { title: "姓名", dataIndex: "name", key: "name" },
-      { title: "心率", dataIndex: "heart_rate", key: "heartRate" },
-      { title: "呼吸", dataIndex: "breath_rate", key: "breathRate" },
-      { title: "距离", dataIndex: "distance", key: "distance" },
-      { title: "告警级别", dataIndex: "alarm_level", key: "alarmLevel" }, // 修改：告警级别
-      { title: "处理方法", dataIndex: "handling_method", key: "handlingMethod" }, // 新增：处理方法
+      { title: "心率", dataIndex: "heart_rate", key: "heart_rate" },
+      { title: "呼吸", dataIndex: "breath_rate", key: "breath_rate" },
+      { title: "距离", dataIndex: "target_distance", key: "target_distance" }, // Assuming 'distance' is 'target_distance' in the API response
       {
-         title: "处理时间",
-         dataIndex: "handling_time",
-         key: "handlingTime",
-         render: (handlingTime: string) => (handlingTime ? dayjs(handlingTime).format("YYYY-MM-DD HH:mm:ss") : ""), // 格式化处理时间
+         title: "是否告警",
+         dataIndex: "is_alarm", // Assuming 'isAlarm' is 'is_alarm' in the API response
+         key: "is_alarm",
+         render: (isAlarm: boolean) => (
+            <span style={{ color: isAlarm ? "red" : "inherit" }}>{isAlarm ? "是" : "否"}</span>
+         ),
       },
       {
-         title: "告警时间",
-         dataIndex: "create_date",
-         key: "dateTime",
+         title: "日期时间",
+         dataIndex: "update_date", // Todo: should be time!!
+         key: "time",
          render: (dateTime: string) => dayjs(dateTime).format("YYYY-MM-DD HH:mm:ss"),
       },
    ];
 
    return (
       <div>
-         <h2>告警信息</h2>
-         <Form layout='vertical' onFinish={handleSearch}>
+         <h2>历史数据</h2>
+         <Form
+            layout='vertical'
+            onFinish={handleSearch}
+            form={form}
+            onValuesChange={(changedValues, allValues) => setFilters(allValues)}
+         >
+            {" "}
+            {/* 将 layout 改为 vertical */}
             <Row gutter={16}>
-               <Col span={4}>
+               {" "}
+               {/* 添加 Row 来包裹筛选条件 */}
+               <Col span={6}>
                   <Form.Item label='人员编号' name='personnelId'>
                      <Select
                         showSearch
@@ -149,35 +148,25 @@ const AlarmDisplay: React.FC = () => {
                      />
                   </Form.Item>
                </Col>
-               <Col span={5}>
+               <Col span={6}>
                   <Form.Item label='姓名' name='name'>
                      <Input placeholder='请输入姓名' />
                   </Form.Item>
                </Col>
-               <Col span={5}>
-                  <Form.Item label='告警级别' name='alarmLevel'>
-                     {" "}
-                     {/* 修改：告警级别筛选 */}
+               <Col span={6}>
+                  <Form.Item label='起止时间' name='dateRange'>
+                     <RangePicker showTime />
+                  </Form.Item>
+               </Col>
+               {/* <Col span={6}>
+                  <Form.Item label='是否告警' name='isAlarm'>
                      <Select allowClear placeholder='请选择'>
-                        <Select.Option value='low'>低</Select.Option>
-                        <Select.Option value='medium'>中</Select.Option>
-                        <Select.Option value='high'>高</Select.Option>
+                        <Select.Option value={true}>是</Select.Option>
+                        <Select.Option value={false}>否</Select.Option>
                      </Select>
                   </Form.Item>
-               </Col>
-               {/* 新增：处理时间筛选 */}
-               <Col span={5}>
-                  <Form.Item label='处理时间' name='handlingTimeRange'>
-                     <RangePicker />
-                  </Form.Item>
-               </Col>
-               <Col span={5}>
-                  <Form.Item label='告警时间' name='dateRange'>
-                     <RangePicker />
-                  </Form.Item>
-               </Col>
+               </Col> */}
             </Row>
-
             <Form.Item style={{ textAlign: "right" }}>
                {" "}
                {/* 将按钮居右 */}
@@ -195,9 +184,9 @@ const AlarmDisplay: React.FC = () => {
             </Form.Item>
          </Form>
 
-         <Table dataSource={alarmData} columns={columns} />
+         <Table dataSource={historicalData} columns={columns} />
       </div>
    );
 };
 
-export default AlarmDisplay;
+export default HistoryData;

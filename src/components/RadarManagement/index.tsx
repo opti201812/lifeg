@@ -1,54 +1,114 @@
-import React, { useState, useCallback } from "react";
-import { Table, Button, Modal, Form, Input, Switch } from "antd";
-
-interface Radar {
-   id: number;
-   ip: string;
-   enabled: boolean;
-   remark: string;
-}
+// components/RadarManagement/index.tsx
+import React, { useState, useCallback, useEffect } from "react";
+import { Table, Button, Modal, Form, Input, Switch, message } from "antd";
+import { settingSpace } from "../../styles/theme";
+import { Radar } from "../../types";
+import axios from "axios";
+import config from "../../config";
 
 const RadarManagement: React.FC = () => {
+   const [form] = Form.useForm(); // Get a reference to the Form instance
    const [radars, setRadars] = useState<Radar[]>([]);
    const [isModalVisible, setIsModalVisible] = useState(false);
-   const [editingRadar, setEditingRadar] = useState<Radar | null>(null);
+   const [editingRadar, setEditingRadar] = useState<Radar | { name: ""; url: ""; enabled: true; remark: "" }>({
+      name: "",
+      url: "",
+      enabled: true,
+      remark: "",
+   });
+   const [initialValues, setInitialValues] = useState<Radar | { name: ""; url: ""; enabled: true; remark: "" }>({
+      name: "",
+      url: "",
+      enabled: true,
+      remark: "",
+   }); // Use state for initial values
+
+   // Fetch radars on component mount
+   useEffect(() => {
+      const fetchRadars = async () => {
+         try {
+            const response = await axios.get(`${config.backend.url}/radars`);
+            setRadars(response.data || []);
+         } catch (error) {
+            console.error("Error fetching radars:", error);
+            message.error("Failed to load radars");
+         }
+      };
+      fetchRadars();
+   }, []);
 
    const handleAddRadar = useCallback(
-      (radar: Radar) => {
-         setRadars([...radars, radar]);
+      async (radar: Radar) => {
+         try {
+            const response = await axios.post(`${config.backend.url}/radars`, radar);
+            setRadars([...radars, response.data]);
+            setIsModalVisible(false);
+            message.success("Radar added successfully");
+         } catch (error) {
+            console.error("Error adding radar:", error);
+            if (axios.isAxiosError(error)) {
+               message.error(error.response?.data?.error || "Failed to add radar");
+            } else {
+               message.error("Failed to add radar");
+            }
+         }
       },
       [radars]
    );
 
    const handleEditRadar = useCallback(
-      (radar: Radar) => {
-         setRadars(radars.map((r) => (r.id === radar.id ? radar : r)));
+      async (radar: Radar) => {
+         try {
+            const response = await axios.put(`${config.backend.url}/radars/${editingRadar?.name}`, radar);
+            setRadars(radars.map((r) => (r.name === radar.name ? response.data : r)));
+            setIsModalVisible(false);
+            message.success("Radar updated successfully");
+         } catch (error) {
+            console.error("Error editing radar:", error);
+            message.error("Failed to update radar");
+         }
       },
-      [radars]
+      [radars, editingRadar?.name]
    );
 
    const handleDeleteRadar = useCallback(
-      (id: number) => {
-         setRadars(radars.filter((r) => r.id !== id));
+      async (name: string) => {
+         // Change id to name
+         try {
+            await axios.delete(`${config.backend.url}/radars/${name}`);
+            setRadars(radars.filter((r) => r.name !== name));
+            message.success("Radar deleted successfully");
+         } catch (error) {
+            console.error("Error deleting radar:", error);
+            message.error("Failed to delete radar");
+         }
       },
       [radars]
    );
 
-   const showModal = useCallback((radar: Radar | null) => {
-      setEditingRadar(radar);
+   const showModal = (radar?: Radar) => {
+      form.resetFields(); // Reset form fields
+      if (radar) {
+         form.setFieldsValue(radar);
+         setEditingRadar(radar);
+         setInitialValues(radar);
+      } else {
+         setEditingRadar({ name: "", url: "", enabled: true, remark: "" });
+         setInitialValues({ name: "", url: "", enabled: true, remark: "" });
+      }
       setIsModalVisible(true);
-   }, []);
+   };
 
    const handleOk = useCallback(
       (values: Radar) => {
-         if (editingRadar) {
+         if (editingRadar && editingRadar.name) {
             handleEditRadar(values);
          } else {
-            handleAddRadar({ ...values, id: radars.length + 1 });
+            handleAddRadar(values);
          }
          setIsModalVisible(false);
       },
-      [editingRadar, handleAddRadar, handleEditRadar, radars.length]
+      [editingRadar, handleAddRadar, handleEditRadar]
    );
 
    const handleCancel = useCallback(() => {
@@ -56,8 +116,8 @@ const RadarManagement: React.FC = () => {
    }, []);
 
    const columns = [
-      { title: "编号", dataIndex: "id", key: "id" },
-      { title: "IP地址", dataIndex: "ip", key: "ip" },
+      { title: "编号", dataIndex: "name", key: "name" },
+      { title: "URL地址", dataIndex: "url", key: "url" },
       {
          title: "启用监测",
          dataIndex: "enabled",
@@ -71,33 +131,33 @@ const RadarManagement: React.FC = () => {
          render: (_: any, record: Radar) => (
             <>
                <Button onClick={() => showModal(record)}>编辑</Button>
-               <Button onClick={() => handleDeleteRadar(record.id)}>删除</Button>
+               <Button onClick={() => handleDeleteRadar(record.name)}>删除</Button> {/* Use name for delete */}
             </>
          ),
       },
    ];
 
    return (
-      <div>
+      <div style={settingSpace}>
          <h2>雷达管理</h2>
-         <Button type='primary' onClick={() => showModal(null)}>
+         <Button type='primary' onClick={() => showModal({ id: 0, name: "", url: "", enabled: true, remark: "" })}>
             新增雷达
          </Button>
-         <Table dataSource={radars} columns={columns} rowKey='id' />
+         <Table dataSource={radars} columns={columns} rowKey='name' />
          <Modal
-            title={editingRadar ? "编辑雷达" : "新增雷达"}
-            visible={isModalVisible}
+            title={editingRadar && editingRadar.name ? "编辑雷达" : "新增雷达"}
+            open={isModalVisible}
             onCancel={handleCancel}
             footer={null}
          >
-            <Form initialValues={editingRadar || { id: "", ip: "", enabled: false, remark: "" }} onFinish={handleOk}>
-               <Form.Item label='编号' name='id' rules={[{ required: true, message: "请输入编号" }]}>
-                  <Input />
+            <Form initialValues={initialValues} form={form} onFinish={handleOk}>
+               <Form.Item label='编号' name='name' rules={[{ required: true, message: "请输入编号" }]}>
+                  <Input disabled={!!(editingRadar && editingRadar.name)} placeholder='请输入便于记忆的雷达编号' />
                </Form.Item>
-               <Form.Item label='IP地址' name='ip' rules={[{ required: true, message: "请输入IP地址" }]}>
-                  <Input />
+               <Form.Item label='URL地址' name='url' rules={[{ required: true, message: "请输入URL地址" }]}>
+                  <Input placeholder='请输入获取雷达数据的URL地址' />
                </Form.Item>
-               <Form.Item label='启用监测' name='enabled' valuePropName='checked'>
+               <Form.Item label='启用' name='enabled' valuePropName='checked'>
                   <Switch />
                </Form.Item>
                <Form.Item label='备注' name='remark'>

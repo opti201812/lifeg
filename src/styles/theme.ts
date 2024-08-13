@@ -12,3 +12,8 @@ export const theme = {
    primaryColor: "#1890ff",
    secondaryColor: "#ff4d4f",
 };
+
+export const settingSpace = {
+   marginLeft: "3%",
+   marginRight: "3%",
+};
