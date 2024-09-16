@@ -10,13 +10,19 @@ export interface SmsConfig {
    smsBaudRate: number;
    smsPort: string;
    smsVerificationCodeExpiry: number;
+   smsParity: string;
+   smsDataBits: number;
+   smsStopBits: number;
 }
 
 export const defaultSmsConfig: SmsConfig = {
-   smsEnabled: false,
+   smsEnabled: true,
    smsVerificationCodeExpiry: 120,
    smsPort: "USB1",
    smsBaudRate: 9600,
+   smsParity: "None",
+   smsDataBits: 8,
+   smsStopBits: 1,
 };
 
 export interface Radar {
@@ -40,13 +46,22 @@ export interface Room {
    breathRate?: number;
    distance?: number;
    mattress_distance?: number; // Add mattress_distance (optional)
+   time?: number; // Add time (optional)
+   personnel_name?: string; // Add personnel_name (optional)
+   schedules?: PersonnelSchedule[]; // Add the schedules property
+   networkFailure?: boolean; // Add networkFailure (optional)
+   radarFailure?: boolean; // Add radarFailure (optional)
+   radarAbnormal?: boolean; // Add radar  (optional)
 }
+
 export interface User {
    id: number;
    name: string;
    account: string;
+   gender: string | null;
+   age: number | null;
    password?: string;
-   role: string;
+   role: "user" | "admin";
    room_id: number | null; // Allow null for admin users
    remark: string;
 }
@@ -73,6 +88,7 @@ export interface Personnel {
    medical_history?: string;
    remark?: string;
    schedules?: PersonnelSchedule[]; // Array of schedules
+   gender?: string; // Optional, as it might not be required for all personnel
 }
 
 export const MEDICAL_HISTORIES = [
@@ -114,16 +130,6 @@ export interface DataPoint {
    date: string;
    value: number;
    type?: string; // Optional type for series differentiation
-}
-
-export interface CurrentData {
-   distance: number;
-   heartbeat: number;
-   breathing: number;
-   distanceData: DataPoint[];
-   heartbeatData: DataPoint[];
-   breathingData: DataPoint[];
-   lastUpdate: string;
 }
 
 export interface HistoricalData {

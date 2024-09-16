@@ -20,7 +20,7 @@ const PersonnelManagement: React.FC = () => {
             setPersonnelData(response.data);
          } catch (error) {
             console.error("Error fetching personnel:", error);
-            message.error("Failed to load personnel");
+            message.error("获取人员信息失败");
          }
       };
       fetchPersonnel();
@@ -38,10 +38,10 @@ const PersonnelManagement: React.FC = () => {
                try {
                   await axios.delete(`${config.backend.url}/personnel/${id}`);
                   setPersonnelData(personnelData.filter((u) => u.id !== id)); // Update personnelData
-                  message.success("Personnel deleted successfully");
+                  message.success("删除人员成功");
                } catch (error) {
                   console.error("Error deleting personnel:", error);
-                  message.error("Failed to delete personnel");
+                  message.error("删除人员失败");
                }
             },
          });
@@ -50,13 +50,14 @@ const PersonnelManagement: React.FC = () => {
    );
 
    const columns = [
-      { title: "编号", dataIndex: "id", key: "id" }, // Access nested property
+      { title: "人员编号", dataIndex: "id", key: "id" }, // Access nested property
       { title: "姓名", dataIndex: "name", key: "name" }, // Access nested property
       { title: "身份证号码", dataIndex: "id_number", key: "id_number" }, // Access nested property
       { title: "职业", dataIndex: "occupation", key: "occupation" }, // Access nested property
       { title: "年龄", dataIndex: "age", key: "age" }, // Access nested property
-      { title: "心率", dataIndex: "heart_rate", key: "heart_rate" }, // Access nested property
-      { title: "呼吸", dataIndex: "breath_rate", key: "breath_rate" }, // Access nested property
+      { title: "性别", dataIndex: "gender", key: "gender" },
+      { title: "平均心率", dataIndex: "heart_rate", key: "heart_rate" }, // Access nested property
+      { title: "平均呼吸次数", dataIndex: "breath_rate", key: "breath_rate" }, // Access nested property
       {
          title: "病史",
          dataIndex: "medical_history",

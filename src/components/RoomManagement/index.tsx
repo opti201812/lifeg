@@ -34,7 +34,7 @@ const RoomManagement: React.FC = () => {
             setRooms(roomsData || []);
          } catch (error) {
             console.error("Error fetching rooms:", error);
-            message.error("Failed to load rooms");
+            message.error("获取房间列表失败！");
          }
       };
 
@@ -44,7 +44,7 @@ const RoomManagement: React.FC = () => {
             setRadars(response.data || []);
          } catch (error) {
             console.error("Error fetching radars:", error);
-            message.error("Failed to load radars for dropdown");
+            message.error("获取雷达列表失败！");
          }
       };
 
@@ -64,7 +64,7 @@ const RoomManagement: React.FC = () => {
             setAvailablePersonnel(available);
          } catch (error) {
             console.error("Error fetching available personnel:", error);
-            message.error("Failed to load available personnel");
+            message.error("获取人员信息失败！");
          }
       };
 
@@ -85,7 +85,7 @@ const RoomManagement: React.FC = () => {
             setAvailablePersonnel(available);
          } catch (error) {
             console.error("Error fetching available personnel:", error);
-            message.error("Failed to load available personnel");
+            message.error("获取人员信息失败！");
          }
       };
 
@@ -112,17 +112,17 @@ const RoomManagement: React.FC = () => {
                // Refetch rooms after check-out
                const response = await axios.get(`${config.backend.url}/rooms`);
                setRooms(response.data || []);
-               message.success("Check-out successful");
+               message.success("出场成功");
             } catch (error) {
                console.error("Error checking out:", error);
-               message.error("Failed to check out");
+               message.error("出场失败");
             }
          },
       });
    }, []);
    const handleCheckInOk = useCallback(async () => {
       if (!selectedRoom || !selectedPersonnel) {
-         message.error("Please select a room and a personnel");
+         message.error("请先选择房间和人员");
          return;
       }
 
@@ -134,13 +134,13 @@ const RoomManagement: React.FC = () => {
          const response = await axios.get(`${config.backend.url}/rooms`);
          setRooms(response.data || []);
          setIsCheckInModalVisible(false);
-         message.success("Check-in successful");
+         message.success("入场成功");
       } catch (error) {
          console.error("Error checking in:", error);
          if (axios.isAxiosError(error)) {
-            message.error(error.response?.data?.error || "Failed to check in");
+            message.error(error.response?.data?.error || "入场操作失败！");
          } else {
-            message.error("Failed to check in");
+            message.error("入场操作失败！");
          }
       }
    }, [selectedRoom, selectedPersonnel]);
@@ -164,13 +164,13 @@ const RoomManagement: React.FC = () => {
             const response = await axios.post(`${config.backend.url}/rooms`, room);
             setRooms([...rooms, response.data]);
             setIsModalVisible(false);
-            message.success("Room added successfully");
+            message.success("新增房间成功");
          } catch (error) {
             console.error("Error adding room:", error);
             if (axios.isAxiosError(error)) {
-               message.error(error.response?.data?.error || "Failed to add room");
+               message.error(error.response?.data?.error || "新增房间失败！");
             } else {
-               message.error("Failed to add room");
+               message.error("新增房间失败！");
             }
          }
       },
@@ -184,13 +184,13 @@ const RoomManagement: React.FC = () => {
             const response = await axios.put(`${config.backend.url}/rooms/${room.id}`, room);
             setRooms(rooms.map((r) => (r.id === room.id ? response.data : r)));
             setIsModalVisible(false);
-            message.success("Room updated successfully");
+            message.success("更新房间信息成功");
          } catch (error) {
             console.error("Error editing room:", error);
             if (axios.isAxiosError(error)) {
-               message.error(error.response?.data?.error || "Failed to update room");
+               message.error(error.response?.data?.error || "更新房间信息失败！");
             } else {
-               message.error("Failed to update room");
+               message.error("更新房间信息失败！");
             }
          }
       },
@@ -202,10 +202,10 @@ const RoomManagement: React.FC = () => {
          try {
             await axios.delete(`${config.backend.url}/rooms/${id}`);
             setRooms(rooms.filter((r) => r.id !== id));
-            message.success("Room deleted successfully");
+            message.success("删除房间成功");
          } catch (error) {
             console.error("Error deleting room:", error);
-            message.error("Failed to delete room");
+            message.error("删除房间失败！");
          }
       },
       [rooms]
@@ -217,7 +217,7 @@ const RoomManagement: React.FC = () => {
          setAvailableRadars(response.data || []);
       } catch (error) {
          console.error("Error fetching available radars:", error);
-         message.error("Failed to load available radars");
+         message.error("获取雷达信息失败！");
       }
 
       room ? form.setFieldsValue(room) : form.resetFields();
@@ -288,12 +288,6 @@ const RoomManagement: React.FC = () => {
             <>
                <Button onClick={() => showModal(record)}>编辑</Button>
                <Button onClick={() => handleDeleteRoom(record.id)}>删除</Button>
-               <Button onClick={() => handleCheckIn(record)} disabled={record.personnel_id !== null}>
-                  进场
-               </Button>
-               <Button onClick={() => handleCheckOut(record.id)} disabled={record.personnel_id === null}>
-                  退场
-               </Button>
             </>
          ),
       },

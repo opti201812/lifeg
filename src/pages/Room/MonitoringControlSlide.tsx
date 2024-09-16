@@ -1,15 +1,18 @@
 // components/RoomPage/MonitoringControlSlide.tsx
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, Button, message, Row, Col } from "antd";
 import axios from "axios";
 import config from "../../config";
-import { HeartOutlined, RadarChartOutlined } from "@ant-design/icons";
+import { HeartOutlined } from "@ant-design/icons";
 import { RoomInfo } from "./RoomInfo";
-import dayjs from "dayjs";
 import RoomInfoFoot from "./RoomInfoFoot";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store";
 
 interface MonitoringControlSlideProps {
    roomId: number;
+   roomInfo: { name: string; age: number; gender: string };
    isMonitoringEnabled: boolean;
    setIsMonitoringEnabled: React.Dispatch<React.SetStateAction<boolean>>;
    onMonitoringStatusChange: (enabled: boolean) => void; // Callback to notify parent component
@@ -19,27 +22,23 @@ const cardHeight = 405,
 
 const MonitoringControlSlide: React.FC<MonitoringControlSlideProps> = ({
    roomId,
+   roomInfo,
    isMonitoringEnabled,
    setIsMonitoringEnabled,
    onMonitoringStatusChange,
 }) => {
-   const currentData = {
-      heartbeat: 67,
-      breathing: 12,
-      distance: 1.2,
-      lastUpdate: "2023-10-10T10:10:10Z",
-   };
+   const navigate = useNavigate();
+
+   const roomData = useSelector((state: RootState) => state.data.rooms.find((room) => room.id === roomId)); // Get room data from Redux store
 
    useEffect(() => {
       // Fetch initial monitoring status when the component mounts
       const fetchRoomStatus = async () => {
          try {
-            setIsMonitoringEnabled(true);
             const response = await axios.get(`${config.backend.url}/rooms/${roomId}`);
             setIsMonitoringEnabled(response.data.enabled);
          } catch (error) {
             console.error("Error fetching room status:", error);
-            // message.error("Failed to load room status");
          }
       };
       fetchRoomStatus();
@@ -48,19 +47,21 @@ const MonitoringControlSlide: React.FC<MonitoringControlSlideProps> = ({
    const handleToggleMonitoring = async () => {
       try {
          const newEnabledStatus = !isMonitoringEnabled;
-         setIsMonitoringEnabled(newEnabledStatus);
          await axios.put(`${config.backend.url}/rooms/${roomId}`, { enabled: newEnabledStatus });
+         setIsMonitoringEnabled(newEnabledStatus);
          onMonitoringStatusChange(newEnabledStatus); // Notify parent component
-         message.success(`Monitoring ${newEnabledStatus ? "enabled" : "disabled"}`);
+         message.success(`已切换为： ${newEnabledStatus ? "设防" : "撤防"} 状态`);
       } catch (error) {
          console.error("Error toggling monitoring:", error);
-         //  message.error("Failed to toggle monitoring");
       }
    };
 
    return (
-      <Card title={<RoomInfo roomId={roomId} age={51} gender={"男"} type='' />} style={{ minHeight: 560 }}>
-         {isMonitoringEnabled ? (
+      <Card
+         title={<RoomInfo roomName={roomInfo.name} age={roomInfo.age} gender={roomInfo.gender} type='' />}
+         style={{ minHeight: 560 }}
+      >
+         {roomData?.personnel_id && isMonitoringEnabled ? (
             <div>
                <Row gutter={16}>
                   <Col span={8}>
@@ -93,7 +94,7 @@ const MonitoringControlSlide: React.FC<MonitoringControlSlideProps> = ({
                                  margin: 0,
                               }}
                            >
-                              {currentData.distance} 米
+                              {roomData?.distance} 米
                            </p>
                         </div>
                      </Card>
@@ -126,7 +127,7 @@ const MonitoringControlSlide: React.FC<MonitoringControlSlideProps> = ({
                                  margin: 0,
                               }}
                            >
-                              {currentData.heartbeat} 次/分
+                              {roomData?.heartRate} 次/分
                            </p>
                         </div>
                      </Card>
@@ -161,14 +162,17 @@ const MonitoringControlSlide: React.FC<MonitoringControlSlideProps> = ({
                                  margin: 0,
                               }}
                            >
-                              {currentData.breathing} 次/分
+                              {roomData?.breathRate} 次/分
                            </p>
                         </div>
                      </Card>
                   </Col>
                </Row>
 
-               <RoomInfoFoot lastUpdate={currentData.lastUpdate} onDisarmClick={handleToggleMonitoring} />
+               <RoomInfoFoot
+                  lastUpdate={roomData?.time ? new Date(roomData?.time).toLocaleString() : ""}
+                  onDisarmClick={handleToggleMonitoring}
+               />
             </div>
          ) : (
             <div
@@ -180,13 +184,23 @@ const MonitoringControlSlide: React.FC<MonitoringControlSlideProps> = ({
                   alignContent: "center",
                }}
             >
-               <Button
-                  type='primary'
-                  onClick={handleToggleMonitoring}
-                  style={{ height: 48, width: 160, fontSize: 24, marginTop: 190 }}
-               >
-                  设防
-               </Button>
+               {roomData?.personnel_id ? (
+                  <Button
+                     type='primary'
+                     onClick={handleToggleMonitoring}
+                     style={{ height: 48, width: 160, fontSize: 24, marginTop: 190 }}
+                  >
+                     设防
+                  </Button>
+               ) : (
+                  <Button
+                     type='primary'
+                     onClick={() => navigate("/entry-exit-management")}
+                     style={{ height: 48, width: 160, fontSize: 24, marginTop: 190 }}
+                  >
+                     进场
+                  </Button>
+               )}
             </div>
          )}
       </Card>

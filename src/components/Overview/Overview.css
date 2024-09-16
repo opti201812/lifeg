@@ -3,6 +3,10 @@
    animation: blink 1s infinite;
 }
 
+.alarm-card:hover {
+   border-color: transparent;
+}
+
 .alarm-text {
    color: red;
    font-weight: bold;

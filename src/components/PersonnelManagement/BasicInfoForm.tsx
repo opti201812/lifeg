@@ -5,16 +5,15 @@ import { MEDICAL_HISTORIES, Personnel, Room } from "../../types";
 
 interface BasicInfoFormProps {
    form: any; // You might need to replace 'any' with the actual type of your form instance
-   rooms: Room[];
    editingPersonnel: Personnel | null;
 }
 
-const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, rooms, editingPersonnel }) => {
+const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, editingPersonnel }) => {
    return (
       <>
          <Form.Item
             name={["id"]}
-            label='编号'
+            label='人员编号'
             rules={[{ required: false, message: "请输入编号" }]}
             style={{ display: "none" }}
          >
@@ -50,8 +49,11 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, rooms, editingPerso
             {" "}
             {/* Another row for two columns */}
             <Col span={12}>
-               <Form.Item label='职业' name={["occupation"]} rules={[{ required: false, message: "请输入职业" }]}>
-                  <Input />
+               <Form.Item label='性别' name={["gender"]}>
+                  <Select placeholder='请选择性别' allowClear>
+                     <Select.Option value='男'>男</Select.Option>
+                     <Select.Option value='女'>女</Select.Option>
+                  </Select>
                </Form.Item>
             </Col>
             <Col span={12}>
@@ -60,32 +62,31 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, rooms, editingPerso
                </Form.Item>
             </Col>
          </Row>
-
          <Row gutter={16}>
             <Col span={12}>
-               <Form.Item label='心率' name={["heart_rate"]} rules={[{ required: true, message: "请输入心率" }]}>
+               <Form.Item label='职业' name={["occupation"]} rules={[{ required: false, message: "请输入职业" }]}>
+                  <Input />
+               </Form.Item>
+            </Col>
+         </Row>
+         <Row gutter={16}>
+            <Col span={12}>
+               <Form.Item label='平均心率' name={["heart_rate"]} rules={[{ required: true, message: "请输入心率" }]}>
                   <Input type='number' />
                </Form.Item>
             </Col>
             <Col span={12}>
-               <Form.Item label='呼吸' name={["breath_rate"]} rules={[{ required: true, message: "请输入呼吸" }]}>
+               <Form.Item
+                  label='平均呼吸次数'
+                  name={["breath_rate"]}
+                  rules={[{ required: true, message: "请输入呼吸" }]}
+               >
                   <Input type='number' />
                </Form.Item>
             </Col>
          </Row>
 
          <Row gutter={16}>
-            <Col span={12}>
-               <Form.Item label='房间号' name={["room_id"]} rules={[{ required: false, message: "请选择房间号" }]}>
-                  <Select allowClear placeholder='请选择房间号'>
-                     {rooms.map((room) => (
-                        <Select.Option key={room.id} value={room.id}>
-                           {room.name}
-                        </Select.Option>
-                     ))}
-                  </Select>
-               </Form.Item>
-            </Col>
             <Col span={12}>
                <Form.Item name={["medical_history"]} label='病史' rules={[{ required: true, message: "请选择病史" }]}>
                   <Select placeholder='请选择病史' allowClear>
@@ -101,12 +102,12 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, rooms, editingPerso
                   </Select>
                </Form.Item>
             </Col>
+            <Col span={12}>
+               <Form.Item name={["remark"]} label='备注' rules={[{ required: false, message: "请输入备注" }]}>
+                  <Input.TextArea rows={2} />
+               </Form.Item>
+            </Col>
          </Row>
-
-         {/* Remark field remains full-width */}
-         <Form.Item name={["remark"]} label='备注' rules={[{ required: false, message: "请输入备注" }]}>
-            <Input.TextArea rows={4} />
-         </Form.Item>
       </>
    );
 };

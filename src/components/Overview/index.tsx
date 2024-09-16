@@ -1,17 +1,23 @@
+// components/Overview/index.tsx
+
 import React, { useState, useEffect, useRef } from "react";
 import { Card, Row, Col, Button, Tag, Typography, message } from "antd";
 import { HeartOutlined, BellOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 import "./Overview.css";
 import RoomPage from "../../pages/Room";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { MEDICAL_HISTORIES, Room, User } from "../../types";
 import axios from "axios";
 import config from "../../config";
+import { RootState } from "../../store";
+import { setRooms } from "../../store/dataSlice";
 
 const Overview: React.FC = () => {
+   const dispatch = useDispatch();
    const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
-   const [rooms, setRooms] = useState<Room[]>([]);
-   const user = useSelector((state: { user: User }) => state.user);
+   const rooms = useSelector((state: RootState) => state.data.rooms); // Get rooms from Redux store
+   const alarms = useSelector((state: RootState) => state.data.alarms); // Get alarms from Redux store
 
    useEffect(() => {
       // Fetch room data from API
@@ -20,117 +26,79 @@ const Overview: React.FC = () => {
             const response = await axios.get(`${config.backend.url}/rooms`);
             const roomsData = response.data.map((room: Room) => ({
                ...room,
-               enabled: (room.enabled as unknown) === 1,
+               enabled: room.enabled as unknown,
             }));
-            setRooms(roomsData || []);
+            dispatch(setRooms(roomsData || [])); // Dispatch the setRooms action
          } catch (error) {
             console.error("Error fetching rooms:", error);
-            message.error("Failed to load rooms");
+            message.error("获取房间信息失败！");
          }
       };
       fetchRooms();
    }, []);
 
-   // WebSocket connection for real-time data
-   useEffect(() => {
-      let ws: WebSocket | null = null;
-
-      const connectToWebSocket = () => {
-         // ws = new WebSocket(`ws://${config.backend.url.replace("http://", "")}`); // Replace http:// with ws://
-         ws = new WebSocket(`ws://localhost:3030`); // Replace http:// with ws://
-
-         ws.onopen = () => {
-            console.log("Connected to WebSocket server");
-
-            // Wait for the connection to be fully open (readyState === 1)
-            const waitForOpenConnection = setInterval(() => {
-               console.log("Waiting for WebSocket connection to be open...");
-               if (ws?.readyState === WebSocket.OPEN) {
-                  console.log("WebSocket connection is open.");
-                  clearInterval(waitForOpenConnection);
-
-                  // Subscribe to all rooms or specific rooms based on user role
-                  if (user.role === "admin") {
-                     ws?.send(JSON.stringify({ type: "subscribe", topic: "/rooms/all" }));
-                  } else if (user.role === "user" && user.room_id) {
-                     ws?.send(JSON.stringify({ type: "subscribe", topic: `/rooms/${user.room_id}` }));
-                  } else {
-                     console.log("no role");
-                  }
-
-                  // 设置 ws.onmessage 处理所有消息类型
-                  ws.onmessage = (event) => {
-                     const data = JSON.parse(event.data);
-
-                     if (data.type === "subscribe") {
-                        // 处理订阅响应
-                        if (data.success) {
-                           console.info(`Subscribed to ${data.topic}`);
-                        } else {
-                           console.error(`Failed to subscribe to ${data.topic}: ${data.error}`);
-                        }
-                     } else if (data.type === "roomData") {
-                        // 处理其他类型的消息
-                        // ... 根据 data.type 执行相应的操作
-                        const roomData = data.data;
-                        setRooms((prevRooms) =>
-                           prevRooms?.map((room) => (room.id === data.roomId ? { ...room, ...roomData } : room))
-                        );
-                     } else if (data.type === "alertMessage") {
-                        // 处理其他类型的消息
-                        // ... 根据 data.type 执行相应的操作
-                        console.log("alertMessage:", data);
-                        data.medicalHistoryCode !== "d00" &&
-                           console.log(
-                              "History:",
-                              MEDICAL_HISTORIES.find((item) => item.value === data.medicalHistoryCode)?.label
-                           );
-                        // setRooms((prevRooms) =>
-                        // prevRooms?.map((room) => (room.id === data.roomId ? { ...room, ...data } : room))
-                        // );
-                     }
-                  };
-               }
-            }, 100);
-         };
-
-         ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            // Update the corresponding room's data in the `rooms` state
-            setRooms((prevRooms) => prevRooms?.map((room) => (room.id === data.roomId ? { ...room, ...data } : room)));
-         };
-
-         ws.onclose = () => {
-            console.log("Disconnected from WebSocket server");
-            // Attempt to reconnect after a delay (optional)
-            setTimeout(connectToWebSocket, 5000); // Reconnect after 5 seconds
-         };
-
-         ws.onerror = (error) => {
-            console.error("WebSocket error:", error);
-         };
-      };
-
-      console.log("Connecting to WebSocket server");
-      connectToWebSocket();
-
-      // Cleanup function to close the WebSocket connection
-      return () => {
-         if (ws) {
-            ws.close();
-         }
-      };
-   }, [user.role, user.room_id]);
-
-   const getCollectionStatus = (room: Room) => {
-      switch (room.enabled) {
-         case false:
-            return { text: "未采集", color: "red" };
-         case true:
-            return { text: "采集中", color: "green" };
-         default:
-            return { text: "故障", color: "gray" };
+   const getTagInfo = (room: Room) => {
+      if (!room.personnel_id) {
+         return { text: "无人", color: "gray" };
+      } else if (!room.enabled) {
+         return { text: "未设防", color: "red" };
+      } else if (isInRestrictedSchedule(room)) {
+         return { text: "搁置时段", color: "orange" };
+      } else if (room.networkFailure) {
+         return { text: "网络故障", color: "red" };
+      } else if (room.radarFailure) {
+         return { text: "雷达故障", color: "red" };
+      } else if (room.radarAbnormal) {
+         return { text: "雷达异常", color: "red" };
+      } else {
+         return { text: "采集中", color: "green" };
       }
+   };
+
+   // Function to check if current time is within restricted schedule
+   const isInRestrictedSchedule = (room: Room) => {
+      if (!room.personnel_id || !room.schedules || room.schedules.length === 0) {
+         return false; // No personnel or schedules, not restricted
+      }
+
+      const now = dayjs();
+      const currentDay = now.day() + 1; // 0 (Sunday) to 6 (Saturday), convert to 1-7
+      const currentHour = now.hour();
+      const currentMinute = now.minute();
+
+      for (const schedule of room.schedules) {
+         const daysOfWeek = schedule.days_of_week.split(",").map(Number);
+         if (!daysOfWeek.includes(currentDay)) {
+            continue; // Schedule doesn't apply to this day
+         }
+
+         const [startHour, startMinute] = schedule.start_time.split(":").map(Number);
+         const [endHour, endMinute] = schedule.end_time.split(":").map(Number);
+
+         // Handle cross-day schedules
+         if (endHour < startHour) {
+            if (
+               currentHour > startHour ||
+               (currentHour === startHour && currentMinute >= startMinute) ||
+               currentHour < endHour ||
+               (currentHour === endHour && currentMinute <= endMinute)
+            ) {
+               return true;
+               // Within restricted time
+            }
+         } else {
+            // Schedule within the same day
+            if (
+               (currentHour > startHour && currentHour < endHour) ||
+               (currentHour === startHour && currentMinute >= startMinute) ||
+               (currentHour === endHour && currentMinute <= endMinute)
+            ) {
+               return true; // Within restricted time
+            }
+         }
+      }
+
+      return false; // Not within any restricted schedule
    };
 
    return (
@@ -139,21 +107,21 @@ const Overview: React.FC = () => {
          {selectedRoomId ? (
             <RoomPage roomId={selectedRoomId} gender='' age={0} />
          ) : (
-            <Row gutter={[16, 32]}>
+            <Row gutter={[16, 32]} justify='center' align='middle'>
                {rooms?.map((room) => (
                   <Col span={6} key={room.id}>
                      <Card
                         bordered={false}
                         onClick={() => setSelectedRoomId(room.id)}
-                        className={room.alarm ? "alarm-card" : ""}
+                        className={alarms.find((item) => item.roomId === room.id) ? "alarm-card" : ""}
                      >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                            <div>
                               <h3>{room.name}</h3>
                            </div>
                            <div style={{ display: "flex", alignItems: "center" }}>
-                              <Tag color={getCollectionStatus(room).color}>{getCollectionStatus(room).text}</Tag>
-                              {room.alarm && (
+                              <Tag color={getTagInfo(room).color}>{getTagInfo(room).text}</Tag> {/* Use getTagInfo */}
+                              {alarms.find((item) => item.roomId === room.id) && (
                                  <BellOutlined style={{ color: "red", marginRight: "8px", fontSize: 24 }} />
                               )}{" "}
                            </div>
@@ -168,18 +136,19 @@ const Overview: React.FC = () => {
                         >
                            <div>
                               <Typography.Title level={4} style={{ margin: 0 }}>
-                                 {room.name.charAt(0) + "*".repeat(room.name.length - 1)}{" "}
-                                 {/* Display first character and mask the rest */}
+                                 {room.personnel_name
+                                    ? // Display personnel name (masked) if personnel_id exists
+                                      room.personnel_name.charAt(0) + "*".repeat(room.personnel_name.length - 1 || 0)
+                                    : ""}
                               </Typography.Title>
                            </div>
                            <div style={{ display: "flex", flexDirection: "column" }}>
-                              {" "}
                               {/* Add flexDirection: "column" */}
                               <Button type='link' style={{ padding: 0 }}>
-                                 一日曲线
+                                 日曲线
                               </Button>
                               <Button type='link' style={{ padding: 0 }}>
-                                 一周曲线
+                                 周曲线
                               </Button>
                            </div>
                         </div>

@@ -1,15 +1,15 @@
+// pages/Room/index.tsx
+
 import React, { useState, useEffect, useRef } from "react";
-import { Carousel, Card, Row, Col, message } from "antd";
+import { Carousel, Card, Row, Col, message, Button } from "antd";
 import { useSelector } from "react-redux";
-import dayjs from "dayjs";
-import currentData from "./sample.js";
-import { Tag, Typography } from "antd";
 import DailyDataSlide from "./DailyDataSlide";
 import WeeklyDataSlide from "./WeeklyDataSlide";
 import MonitoringControlSlide from "./MonitoringControlSlide";
 import axios from "axios";
 import config from "../../config/index";
-import { DataPoint } from "../../types.js";
+import { RootState } from "../../store/index.js";
+import { LeftOutlined, RightOutlined } from "@ant-design/icons"; // 引入手動切換按鈕的圖標
 
 interface User {
    id: number;
@@ -21,86 +21,56 @@ interface User {
 
 // Define Props interface for clarity
 interface PropsWithRoomId {
-   roomId: number;
+   roomId: number | null;
    age: number;
    gender: string;
 }
 
 const RoomPage: React.FC<PropsWithRoomId> = ({ roomId }) => {
-   const user = useSelector((state: { user: User }) => state.user);
-   const [data, setData] = useState([
-      {
-         weeklyData: [
-            { date: "2024-06-10", value: 120, type: "distance" },
-            { date: "2024-06-11", value: 130, type: "heartbeat" },
-            { date: "2024-06-12", value: 110, type: "breathing" },
-            // 更多数据...
-         ],
-         currentData: currentData,
-         date: "2024-07-01 10:00:00",
-      },
-   ]);
+   const [roomInfo, setRoomInfo] = useState({ name: "", age: 0, gender: "", roomId: 0, personnelId: 0 }); // Track room info
+   const roomData = useSelector((state: RootState) => state.data.rooms.find((room) => room.id === roomId)); // Get room data from Redux store
+   const carouselRef = useRef<any>(null); // 创建 carouselRef
 
-   const [isMonitoringEnabled, setIsMonitoringEnabled] = useState(false); // Track monitoring status
+   const [isMonitoringEnabled, setIsMonitoringEnabled] = useState(roomData?.enabled || false); // Track monitoring status
+   if (!roomId) return;
 
    useEffect(() => {
-      // Fetch initial monitoring status
-      const fetchRoomStatus = async () => {
+      if (!roomId) return;
+
+      // Fetch initial room data and personnel details
+      const fetchData = async () => {
          try {
-            setIsMonitoringEnabled(true);
-            const response = await axios.get(`${config.backend.url}/rooms/${roomId}`);
-            // setIsMonitoringEnabled(response.data.enabled);
+            const roomResponse = await axios.get(`${config.backend.url}/rooms/${roomId}`);
+            const roomData = roomResponse.data;
+
+            // Fetch personnel details if personnel_id is present
+            let personnelData = null;
+            if (roomData.personnel_id) {
+               const personnelResponse = await axios.get(`${config.backend.url}/personnel/${roomData.personnel_id}`, {
+                  withCredentials: true,
+               });
+               personnelData = personnelResponse.data;
+            }
+
+            setRoomInfo({
+               ...roomData,
+               age: personnelData?.age,
+               gender: personnelData?.gender,
+               roomId,
+               personnelId: roomData.personnel_id,
+            });
+            setIsMonitoringEnabled(roomData.enabled);
          } catch (error) {
-            console.error("Error fetching room status:", error);
-            // message.error("Failed to load room status");
+            console.error("Error fetching room data:", error);
+            message.error("获取房间信息失败！");
          }
       };
 
-      fetchRoomStatus();
+      fetchData();
    }, [roomId]);
-
    const handleMonitoringStatusChange = (enabled: boolean) => {
       setIsMonitoringEnabled(enabled);
    };
-
-   const lineConfig = {
-      data,
-      xField: "date",
-      yField: "value",
-      seriesField: "type",
-      smooth: true,
-      height: 300,
-   };
-
-   const getLineOptions = (data: DataPoint[], seriesName: string, isDaily = true) => ({
-      xAxis: {
-         type: "time",
-         axisLabel: {
-            rotate: 45,
-         },
-         splitNumber: isDaily ? 7 : 7,
-      },
-      yAxis: {
-         type: "value",
-      },
-      series: [
-         {
-            name: seriesName,
-            data: data.map((item) => [item.date, item.value]),
-            type: "line",
-            smooth: true,
-            showSymbol: false,
-         },
-      ],
-      tooltip: {
-         trigger: "axis",
-      },
-   });
-
-   function filterLast24Hours(data: { date: string; value: number }[]) {
-      const oneDayAgo = dayjs().subtract(1, "day");
-      return data.filter((item) => dayjs(item.date) > oneDayAgo);
-   }
 
    return (
       <div
@@ -111,31 +81,27 @@ const RoomPage: React.FC<PropsWithRoomId> = ({ roomId }) => {
             height: "100%",
          }}
       >
-         <Carousel autoplay={isMonitoringEnabled}>
-            {" "}
-            {/* Autoplay only when monitoring is enabled */}
+         <Carousel autoplay={isMonitoringEnabled} autoplaySpeed={10000} ref={carouselRef}>
             <MonitoringControlSlide
                roomId={roomId}
-               isMonitoringEnabled={isMonitoringEnabled}
+               roomInfo={roomInfo}
+               isMonitoringEnabled={isMonitoringEnabled || false}
                setIsMonitoringEnabled={setIsMonitoringEnabled}
                onMonitoringStatusChange={handleMonitoringStatusChange}
             />
-            <DailyDataSlide
-               roomId={roomId}
-               age={user.age}
-               gender={user.gender}
-               currentData={currentData}
-               filterLast24Hours={filterLast24Hours}
-               getLineOptions={getLineOptions}
-            />
-            <WeeklyDataSlide
-               roomId={roomId}
-               age={user.age}
-               gender={user.gender}
-               currentData={currentData}
-               getLineOptions={getLineOptions}
-            />
+            <DailyDataSlide roomInfo={roomInfo} isMonitoringEnabled={isMonitoringEnabled || false} />
+            <WeeklyDataSlide roomInfo={roomInfo} isMonitoringEnabled={isMonitoringEnabled || false} />
          </Carousel>
+         <div style={{ marginTop: "10px", textAlign: "center" }}>
+            {" "}
+            {/* 添加手動切換按鈕 */}
+            <Button
+               icon={<LeftOutlined />}
+               onClick={() => carouselRef.current?.prev()}
+               style={{ marginRight: "10px" }}
+            />
+            <Button icon={<RightOutlined />} onClick={() => carouselRef.current?.next()} />
+         </div>
       </div>
    );
 };

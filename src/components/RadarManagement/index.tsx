@@ -31,7 +31,7 @@ const RadarManagement: React.FC = () => {
             setRadars(response.data || []);
          } catch (error) {
             console.error("Error fetching radars:", error);
-            message.error("Failed to load radars");
+            message.error("加载雷达列表失败！");
          }
       };
       fetchRadars();
@@ -43,13 +43,13 @@ const RadarManagement: React.FC = () => {
             const response = await axios.post(`${config.backend.url}/radars`, radar);
             setRadars([...radars, response.data]);
             setIsModalVisible(false);
-            message.success("Radar added successfully");
+            message.success("新增雷达成功");
          } catch (error) {
             console.error("Error adding radar:", error);
             if (axios.isAxiosError(error)) {
-               message.error(error.response?.data?.error || "Failed to add radar");
+               message.error(error.response?.data?.error || "新增雷达失败！");
             } else {
-               message.error("Failed to add radar");
+               message.error("新增雷达失败！");
             }
          }
       },
@@ -62,10 +62,10 @@ const RadarManagement: React.FC = () => {
             const response = await axios.put(`${config.backend.url}/radars/${editingRadar?.name}`, radar);
             setRadars(radars.map((r) => (r.name === radar.name ? response.data : r)));
             setIsModalVisible(false);
-            message.success("Radar updated successfully");
+            message.success("更新雷达信息成功");
          } catch (error) {
             console.error("Error editing radar:", error);
-            message.error("Failed to update radar");
+            message.error("更新雷达信息失败！");
          }
       },
       [radars, editingRadar?.name]
@@ -77,10 +77,10 @@ const RadarManagement: React.FC = () => {
          try {
             await axios.delete(`${config.backend.url}/radars/${name}`);
             setRadars(radars.filter((r) => r.name !== name));
-            message.success("Radar deleted successfully");
+            message.success("删除雷达成功");
          } catch (error) {
             console.error("Error deleting radar:", error);
-            message.error("Failed to delete radar");
+            message.error("删除雷达信息失败！");
          }
       },
       [radars]

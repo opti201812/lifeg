@@ -1,3 +1,5 @@
+// components/PersonnelManagement/TimeSlotTab.tsx
+
 import React, { useState, useEffect } from "react";
 import { Form, Table, Button, Space, Modal, message, DatePicker, Select } from "antd";
 import axios from "axios";
@@ -27,6 +29,7 @@ const daysOfWeekOptions = [
 const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, initialSchedules }) => {
    const [isModalVisible, setIsModalVisible] = useState(false);
    const [selectedSchedule, setSelectedSchedule] = useState<PersonnelSchedule | null>(null);
+   const [allSchedules, setAllSchedules] = useState<PersonnelSchedule[]>(initialSchedules);
    const [personnelId, setPersonnelId] = useState<number | null>(null);
    const [scheduleForm] = Form.useForm(); // Renamed form instance for the modal
    const [timeRange, setTimeRange] = useState<[string, string]>([
@@ -42,7 +45,6 @@ const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, in
    }, [form]);
 
    const showModal = (schedule?: PersonnelSchedule) => {
-      console.log("==> ~ schedule:", schedule);
       setSelectedSchedule(schedule || null);
       setIsModalVisible(true);
 
@@ -67,46 +69,35 @@ const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, in
          const scheduleData: PersonnelSchedule = {
             start_time: values.timeRange[0],
             end_time: values.timeRange[1],
-            days_of_week: values.daysOfWeek.join(","),
+            days_of_week: values.daysOfWeek.sort((a: number, b: number) => a - b).join(","),
          };
 
          if (selectedSchedule) {
             // Editing existing schedule
             scheduleData.id = selectedSchedule.id;
+            console.log("==> ~ scheduleData:", scheduleData, allSchedules);
             await axios.put(`${config.backend.url}/personnel/${personnelId}/schedules`, [scheduleData]);
-            message.success("Schedule updated successfully");
+            message.success("更新时间段成功");
 
-            // Update the corresponding field in the fields array
-            const updatedFields = fields.map((field) => {
-               if (field.name === "timeSlots") {
-                  const updatedValues = field.value.map((s: PersonnelSchedule) =>
-                     s.id === scheduleData.id ? scheduleData : s
-                  );
-                  return { ...field, value: updatedValues };
-               }
-               return field;
-            });
-            form.setFieldsValue({ timeSlots: updatedFields });
+            // 更新 allSchedules 狀態~
+            setAllSchedules(
+               allSchedules.map((schedule) => (schedule.id === selectedSchedule.id ? scheduleData : schedule))
+            );
          } else {
             // Adding new schedule
             const response = await axios.post(`${config.backend.url}/personnel/${personnelId}/schedules`, scheduleData);
             const newSchedule = response.data; // Assuming backend returns the new schedule with ID
+            console.log("==> ~ newSchedule:", newSchedule);
 
-            // Add the new schedule to the fields array
-            const updatedFields = fields.map((field) => {
-               if (field.name === "timeSlots") {
-                  return { ...field, value: [...field.value, newSchedule] };
-               }
-               return field;
-            });
-            form.setFieldsValue({ timeSlots: updatedFields });
-            message.success("Schedule added successfully");
+            // 更新 allSchedules 狀態
+            setAllSchedules([...allSchedules, newSchedule]);
+            message.success("新增时间段成功");
          }
 
          setIsModalVisible(false);
       } catch (error) {
          console.error("Error saving schedule:", error);
-         message.error("Failed to save schedule");
+         message.error("保存时间段失败");
       }
    };
 
@@ -128,14 +119,11 @@ const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, in
 
                // Refetch schedules after delete
                const response = await axios.get(`${config.backend.url}/personnel/${personnelId}/schedules`);
-               const updatedFields = fields.map((field) =>
-                  field.name === "timeSlots" ? { ...field, value: response.data } : field
-               );
-               form.setFieldsValue({ timeSlots: updatedFields });
+               setAllSchedules(response.data);
                message.success("删除成功");
             } catch (error) {
                console.error("Error deleting schedule:", error);
-               message.error("Failed to delete schedule");
+               message.error("删除时间段失败");
             }
          },
          onCancel() {
@@ -196,7 +184,7 @@ const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, in
          <Button type='dashed' onClick={() => showModal()}>
             添加搁置时间段
          </Button>
-         <Table columns={columns} dataSource={fields.length > 0 ? fields[0].value : initialSchedules} rowKey='id' />
+         <Table columns={columns} dataSource={fields.length > 0 ? fields[0].value : allSchedules} rowKey='id' />
 
          {/* Modal for editing/adding schedules */}
          <Modal

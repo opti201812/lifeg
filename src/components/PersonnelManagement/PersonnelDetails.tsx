@@ -14,7 +14,6 @@ const PersonnelDetails: React.FC = () => {
    const navigate = useNavigate();
    const [form] = Form.useForm();
    const [personnel, setPersonnel] = useState<Personnel | null>(null);
-   const [rooms, setRooms] = useState<Room[]>([]);
    const [isLoading, setIsLoading] = useState(false);
    const isNewPersonnel = id === "new"; // Flag to indicate new personnel
 
@@ -25,24 +24,13 @@ const PersonnelDetails: React.FC = () => {
             setPersonnel(response.data);
          } catch (error) {
             console.error("Error fetching personnel:", error);
-            message.error("Failed to load personnel details");
-         }
-      };
-
-      const fetchRooms = async () => {
-         try {
-            const response = await axios.get(`${config.backend.url}/rooms`);
-            setRooms(response.data || []);
-         } catch (error) {
-            console.error("Error fetching rooms:", error);
-            message.error("Failed to load rooms");
+            message.error("加载人员详情失败！");
          }
       };
 
       if (id && id !== "new") {
          setIsLoading(true);
          fetchPersonnel();
-         fetchRooms();
       } else {
          // If adding new personnel, set isLoading to false and reset the form
          setIsLoading(false);
@@ -71,16 +59,16 @@ const PersonnelDetails: React.FC = () => {
             // Editing existing personnel
             personnelData.id = personnel.id;
             await axios.put(`${config.backend.url}/personnel/${personnel.id}`, personnelData);
-            message.success("Personnel updated successfully");
+            message.success("更新人员信息成功");
          } else {
             // Adding new personnel
             await axios.post(`${config.backend.url}/personnel`, personnelData);
-            message.success("Personnel added successfully");
+            message.success("添加人员成功");
          }
          navigate("/personnel-management"); // Redirect back to personnel management
       } catch (error) {
          console.error("Error saving personnel:", error);
-         message.error("Failed to save personnel");
+         message.error("保存人员信息失败！");
       }
    };
 
@@ -88,7 +76,7 @@ const PersonnelDetails: React.FC = () => {
       {
          key: "1",
          label: "基本信息",
-         children: <BasicInfoForm rooms={rooms} form={form} editingPersonnel={personnel} />,
+         children: <BasicInfoForm form={form} editingPersonnel={personnel} />,
       },
       // 只有在编辑现有用户时才显示“搁置时间段”tab
       !isNewPersonnel && {

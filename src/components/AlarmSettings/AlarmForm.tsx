@@ -1,5 +1,7 @@
+// components/AlarmSettings/AlarmForm.tsx
+
 import React, { useState, useEffect } from "react";
-import { Form, Input, Button, Switch, Upload, Row, Col, message, UploadFile, Tooltip } from "antd";
+import { Form, Input, Button, Switch, Upload, Row, Col, message, UploadFile, Tooltip, Select } from "antd";
 import { UploadOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import axios, { AxiosError } from "axios"; // You'll need to install axios: `npm install axios`
 import config from "../../config";
@@ -172,7 +174,6 @@ const AlarmForm: React.FC = () => {
                values[key] = config.value;
             });
             setInitialValues(values);
-            console.log("==> ~ values:", values);
             form.setFieldsValue(values);
          })
          .catch((err) => {
@@ -200,19 +201,19 @@ const AlarmForm: React.FC = () => {
    };
 
    const handleFinish = async (values: AlertConfigValue) => {
-      // Type the values correctly
       try {
          const changedValues = Object.keys(values).reduce((acc, key) => {
-            const typedKey = key as keyof AlertConfigValue; // Ensure correct type for key
+            const typedKey = key as keyof AlertConfigValue;
             if (values[typedKey] !== initialValues[typedKey]) {
                acc[typedKey] = values[typedKey];
             }
             return acc;
          }, {} as Partial<AlertConfigValue>);
 
-         for (const [configName, value] of Object.entries(changedValues)) {
-            await axios.put(`${config.backend.url}/alertconfig`, { configName, value });
-         }
+         // 一次性发送所有更新后的配置数据
+         await axios.put(`${config.backend.url}/alertconfig`, changedValues);
+         // Save alertSound to localStorage
+         localStorage.setItem("alertSound", values.alertSound);
          message.success("保存配置信息成功！");
       } catch (err: unknown) {
          // Use unknown type for err
@@ -248,16 +249,15 @@ const AlarmForm: React.FC = () => {
                      {field.type === "number" && (
                         <Input type='number' addonAfter={field.unit} min={field.min} max={field.max} />
                      )}
-                     {/* {field.type === "file" && (
-                           <Upload
-                              name='file'
-                              customRequest={() => false} // Disable default upload behavior
-                              onChange={handleUploadChange}
-                              fileList={fileList}
-                           >
-                              <Button icon={<UploadOutlined />}>上传报警声音</Button>
-                           </Upload>
-                        )} */}
+                     {field.type === "file" && ( // Replace file upload with Select
+                        <Select
+                           placeholder='请选择报警声音'
+                           options={[
+                              { value: "alarm_001.mp3", label: "报警声音1" },
+                              { value: "alarm_002.mp3", label: "报警声音2" },
+                           ]}
+                        />
+                     )}
                      {field.type === "boolean" && <Switch />}
                   </Form.Item>
                </Col>

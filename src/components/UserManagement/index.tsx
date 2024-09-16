@@ -22,7 +22,7 @@ const UserManagement: React.FC = () => {
             setUsers(response.data.user || []);
          } catch (error) {
             console.error("Error fetching users:", error);
-            message.error("Failed to load users"); // Add an error message
+            message.error("获取用户列表失败！"); // Add an error message
          }
       };
       fetchUsers();
@@ -34,7 +34,7 @@ const UserManagement: React.FC = () => {
             setRooms(response.data || []);
          } catch (error) {
             console.error("Error fetching rooms:", error);
-            message.error("Failed to load rooms");
+            message.error("获取房间列表失败！");
          }
       };
 
@@ -68,14 +68,13 @@ const UserManagement: React.FC = () => {
             // Refetch the updated user data
             const response = await axios.get(`${config.backend.url}/users/${user.id}`);
             const updatedUser = response.data;
-            console.log("==> ~ updatedUser:", updatedUser);
 
             setUsers(users.map((u) => (u.id === user.id ? updatedUser.user : u)));
             setIsModalVisible(false);
-            message.success("User updated successfully");
+            message.success("更新用户信息成功");
          } catch (error) {
             console.error("Error editing user:", error);
-            message.error("Failed to update user"); // Add an error message
+            message.error("更新用户信息失败！"); // Add an error message
          }
       },
       [users]
@@ -112,10 +111,8 @@ const UserManagement: React.FC = () => {
    }, []);
 
    const handleOk = useCallback(async () => {
-      console.log("==> ~ handleOk:", editingUser);
       try {
          const values = await form.validateFields(); // Get validated form values
-         console.log("==> ~ values:", values);
 
          if (editingUser) {
             handleEditUser(values);
@@ -183,7 +180,17 @@ const UserManagement: React.FC = () => {
                <Form.Item label='姓名' name='name' rules={[{ required: true, message: "请输入姓名" }]}>
                   <Input autoComplete='off' />
                </Form.Item>
-               <Form.Item label='账号/手机号' name='account' rules={[{ required: true, message: "请输入手机号" }]}>
+               <Form.Item
+                  label='账号/手机号'
+                  name='account'
+                  rules={[
+                     { required: true, message: "请输入手机号" },
+                     {
+                        pattern: /^1\d{10}$/,
+                        message: "请输入以11位数字手机号",
+                     },
+                  ]}
+               >
                   <Input autoComplete='off' />
                </Form.Item>
                {!editingUser && (
@@ -225,7 +232,7 @@ const UserManagement: React.FC = () => {
                <Form.Item
                   label='房间号'
                   name='room_id'
-                  rules={[{ required: editingUser?.role === "user", message: "请选择房间号" }]} // Required only for users
+                  rules={[{ required: !editingUser?.role || editingUser?.role === "user", message: "请选择房间号" }]} // Required only for users
                >
                   <Select
                      allowClear // Allow clearing the selection

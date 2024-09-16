@@ -1,53 +1,73 @@
-// components/AlarmBanner/index.tsx
-import React, { useState, useEffect } from "react";
-import { Alert, Button, Space } from "antd";
-import { WarningOutlined } from "@ant-design/icons";
-import { useSelector } from "react-redux";
+import React, { useState, useEffect, useRef } from "react";
+import { Alert, Button, message, Space } from "antd";
+import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { useLocation, useNavigate } from "react-router-dom";
+import { MEDICAL_HISTORIES } from "../../types";
+import { removeAlarm } from "../../store/dataSlice";
+import axios from "axios";
+import config from "../../config";
+
+interface AlarmMessage {
+   roomId: number;
+   level: number;
+   message: string;
+   medicalHistoryCode?: string; // 可选的病史代码
+}
+const getAlarmLevelText = (level: number) => {
+   // get current time
+   switch (level) {
+      case 1:
+         return "极度危险";
+      case 2:
+         return "危险";
+      case 3:
+         return "异常";
+      default:
+         return "未知";
+   }
+};
 
 const AlarmBanner: React.FC = () => {
-   const [alarms, setAlarms] = useState<{ roomId: number; message: string; medicalHistory?: string }[]>([]);
-   const location = useLocation();
-   const navigate = useNavigate();
-   const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
+   const alarms = useSelector((state: RootState) => state.data.alarms); // Get alarms from Redux store
+   const dispatch = useDispatch();
+
+   const audioRef = useRef<HTMLAudioElement | null>(null); // 用于存储 audio 元素的引用
 
    useEffect(() => {
-      // 模拟从后端获取报警信息
-      const fetchAlarms = async () => {
-         // Replace with your actual API call to fetch alarm data
-         const mockAlarms = [
-            {
-               roomId: 1,
-               message: "心率过高！当前心率：99次/分",
-               medicalHistory: "窦性心动过速",
-            },
-            {
-               roomId: 5,
-               message: "呼吸过快！当前呼吸频率：32次/分。",
-            },
-         ];
-         setAlarms(mockAlarms);
-      };
-
-      // 仅在登录后且不在登录页面时获取报警信息
-      if (isAuthenticated && location.pathname !== "/login") {
-         fetchAlarms();
+      // 当 alarms 变化时，控制声音播放
+      if (alarms.length > 0) {
+         const alertSound = localStorage.getItem("alertSound") || "alarm_001.mp3";
+         const soundUrl = `/sounds/${alertSound}`;
+         if (!audioRef.current) {
+            audioRef.current = new Audio(soundUrl);
+            audioRef.current.loop = true; // 循环播放
+         }
+         audioRef.current.play().catch((error) => {
+            console.error("Error playing alarm sound:", error);
+         });
       } else {
-         setAlarms([]); // Clear alarms when not authenticated or on login page
+         if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0; // Reset playback position
+         }
       }
-   }, [isAuthenticated, location.pathname]);
+   }, [alarms]);
 
-   const handleImmediateAction = (roomId: number) => {
-      // Handle immediate action (e.g., navigate to the room page)
-      navigate(`/room?roomId=${roomId}`);
+   const handleAlarm = async (alarmId: number, action: string) => {
+      try {
+         // Call the backend API to update the alarm entry
+         await axios.put(`${config.backend.url}/history/alarms/${alarmId}`, {
+            handling_method: action,
+         });
+
+         dispatch(removeAlarm(alarmId));
+         message.success("报警处理成功");
+      } catch (error) {
+         console.error("Error handling alarm:", error);
+         message.error("报警处理失败！");
+      }
    };
-
-   const handleIgnore = (roomId: number) => {
-      // Handle ignore action (e.g., remove the alarm from the list)
-      setAlarms(alarms.filter((alarm) => alarm.roomId !== roomId));
-   };
-
    return (
       <>
          {alarms.length > 0 && (
@@ -62,20 +82,32 @@ const AlarmBanner: React.FC = () => {
             >
                {alarms.map((alarm) => (
                   <Alert
+                     type={
+                        (["error", "warning", "info", "success"][alarm.level - 1] || "info") as
+                           | "error"
+                           | "warning"
+                           | "info"
+                           | "success"
+                     }
                      key={alarm.roomId}
                      message={
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                            <span>
-                              {/* <WarningOutlined style={{ marginRight: 8 }} /> */}
-                              请注意！ 房间 {alarm.roomId}: {alarm.message}{" "}
-                              {alarm.medicalHistory && `（个人病史：${alarm.medicalHistory}）`}
+                              {`${new Date().toLocaleTimeString("zh-CN", { hour12: false })}【${getAlarmLevelText(
+                                 alarm.level
+                              )}】 ${alarm.message} `}
+                              {alarm.medicalHistoryCode &&
+                                 `（个人病史：${
+                                    MEDICAL_HISTORIES.find((item) => item.value === alarm.medicalHistoryCode)?.label ||
+                                    "未知"
+                                 }）`}
                            </span>
                            <Space>
-                              <Button type='primary' size='small' onClick={() => handleImmediateAction(alarm.roomId)}>
+                              <Button type='primary' size='small' onClick={() => handleAlarm(alarm.id, "立即处理")}>
                                  立即处理
                               </Button>
-                              <Button size='small' onClick={() => handleIgnore(alarm.roomId)}>
-                                 忽略一次
+                              <Button size='small' onClick={() => handleAlarm(alarm.id, "忽略")}>
+                                 忽略
                               </Button>
                            </Space>
                         </div>

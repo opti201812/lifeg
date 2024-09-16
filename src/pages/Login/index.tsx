@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Form, Input, Button, message, Row, Col } from "antd";
-import { setCurrentUser } from "../../store/userSlice";
+import { Form, Input, Button, message, Row, Col, Checkbox, Tooltip } from "antd";
+import { logout, setCurrentUser } from "../../store/userSlice";
 import axios from "axios";
 import config from "../../config";
 import { AlertConfig } from "../../types"; // Import types
@@ -15,6 +15,8 @@ const Login: React.FC = () => {
    const [showVerification, setShowVerification] = useState(false); // State to control visibility
    const dispatch = useDispatch();
    const navigate = useNavigate();
+   const [rememberMe, setRememberMe] = useState(localStorage.getItem("rememberMe") === "true"); // State for the checkbox
+   const [countdown, setCountdown] = useState(0); // State for countdown timer
 
    useEffect(() => {
       // Fetch SMS config on component mount
@@ -26,9 +28,25 @@ const Login: React.FC = () => {
          })
          .catch((err) => {
             console.error("Error fetching SMS config:", err);
-            message.error("Failed to load SMS settings");
          });
-   }, []); // Empty dependency array ensures this runs only once on mount
+   }, []);
+
+   useEffect(() => {
+      const checkAuth = async () => {
+         try {
+            const response = await axios.post(`${config.backend.url}/login`, {}, { withCredentials: true });
+            if (response.data.success && response.data.message === "Already logged in") {
+               dispatch(setCurrentUser(response.data.user));
+            } else {
+               dispatch(logout());
+            }
+         } catch (error) {
+            dispatch(logout());
+         }
+      };
+
+      checkAuth();
+   }, [dispatch]);
 
    const handleLogin = async (values: any) => {
       try {
@@ -39,19 +57,20 @@ const Login: React.FC = () => {
                password: values.password,
                verificationCode: values.verificationCode, // Include verification code in request
             },
-            { withCredentials: true }
+            {
+               withCredentials: false, // when user click to login, not include credentials in request
+            }
          );
 
          if (response.status === 200) {
             dispatch(
                setCurrentUser({
-                  id: response.data.user.id,
-                  name: response.data.user.account,
-                  role: response.data.user.role,
-                  gender: response.data.user.gender,
-                  age: response.data.user.age,
+                  ...response.data.user, // Spread all user properties
+                  name: response.data.user.name || response.data.user.account, // Use name or account as fallback
                })
             );
+            // Store rememberMe preference in localStorage
+            localStorage.setItem("rememberMe", rememberMe.toString());
 
             if (response.data.user.role === "admin") {
                navigate("/overview");
@@ -72,16 +91,21 @@ const Login: React.FC = () => {
    };
 
    const handleRequestVerificationCode = async () => {
+      if (countdown > 0) {
+         message.warning(`请${countdown}秒后再试`);
+         return;
+      }
       // Implement logic to request SMS verification code using username or phone number
       // This might involve sending an API request to your backend
       // For example:
       if (username) {
          try {
             const response = await axios.post(`${config.backend.url}/request-verification-code`, {
-               username,
+               account: username,
             });
             if (response.status === 200) {
                message.success("验证码已发送至您的手机，请注意查收");
+               setCountdown(60); // Start countdown
             } else {
                message.error(response.data.message || "Failed to request verification code");
             }
@@ -93,6 +117,22 @@ const Login: React.FC = () => {
          message.error("请输入用户名或手机号");
       }
    };
+   useEffect(() => {
+      let interval: NodeJS.Timeout | null = null; // Initialize interval to null
+
+      if (countdown > 0) {
+         interval = setInterval(() => {
+            setCountdown(countdown - 1);
+         }, 1000);
+      }
+
+      return () => {
+         if (interval) {
+            // Only clear the interval if it's been set
+            clearInterval(interval);
+         }
+      };
+   }, [countdown]);
 
    return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
@@ -106,19 +146,37 @@ const Login: React.FC = () => {
             {showVerification && ( // Conditionally render verification fields
                <Row gutter={16}>
                   <Col span={16}>
-                     <Form.Item label='短信验证码' style={{ display: "flex", justifyContent: "space-between" }}>
+                     <Form.Item
+                        label='短信验证码'
+                        name='verificationCode'
+                        style={{ display: "flex", justifyContent: "space-between" }}
+                     >
                         <Input value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} />
                      </Form.Item>
                   </Col>
                   <Col span={4}>
-                     <Button type='default' onClick={handleRequestVerificationCode}>
-                        获取验证码
-                     </Button>
+                     <Tooltip title={/^1\d{10}$/.test(username) ? "" : "账号非手机号，不可以发送短信验证码"}>
+                        <Button
+                           type='default'
+                           onClick={handleRequestVerificationCode}
+                           disabled={countdown > 0 || !/^1\d{10}$/.test(username)}
+                        >
+                           {countdown > 0 ? `${countdown}秒后重试` : "获取验证码"}
+                        </Button>
+                     </Tooltip>
                   </Col>
                </Row>
             )}
+            <Row gutter={16} justify='space-between'>
+               <Col span={24} style={{ textAlign: "right" }}>
+                  <Tooltip title='请联系系统管理员修改密码' trigger='click'>
+                     <a href='#'>忘记密码？</a>
+                  </Tooltip>
+               </Col>
+            </Row>
+
             <Form.Item style={{ display: "flex", justifyContent: "center" }}>
-               <Button type='primary' htmlType='submit' style={{ width: "150%" }}>
+               <Button type='primary' htmlType='submit' style={{ width: "150%", marginTop: 20 }}>
                   登录
                </Button>
             </Form.Item>

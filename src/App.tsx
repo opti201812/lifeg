@@ -1,5 +1,7 @@
-import React, { useCallback, useMemo } from "react";
-import { Layout, Menu, Button } from "antd";
+// App.tsx
+
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { Layout, Menu, Button, message } from "antd";
 import {
    UserOutlined,
    AlertOutlined,
@@ -22,13 +24,24 @@ import styled from "styled-components";
 import { RootState } from "./store";
 import { logout } from "./store/userSlice";
 import RoomPage from "./pages/Room";
-import SmsManagement from "./components/SmsManagement";
-import MiniManagement from "./components/MiniManagement";
 import { useNavigate } from "react-router-dom"; // Import useNavigate hook
 import PersonnelDetails from "./components/PersonnelManagement/PersonnelDetails";
 import AlarmBanner from "./components/AlarmBanner";
 import HistoryData from "./components/HistoryData";
 import EntryExitManagement from "./components/EntryExitManagement";
+import axios from "axios";
+import {
+   updateRoomData,
+   addAlarm,
+   clearAlarms,
+   setRoomNetworkFailure,
+   setRoomRadarFailure,
+   setRoomRadarAbnormal,
+} from "./store/dataSlice";
+import config from "./config";
+
+// 在组件外部设置全局配置
+axios.defaults.withCredentials = true;
 
 const { Header, Content, Sider, Footer } = Layout;
 
@@ -39,9 +52,10 @@ const Logo = styled.img`
 
 const App: React.FC = () => {
    const user = useSelector((state: RootState) => state.user);
-   const { isAuthenticated, role, name } = user;
+   const { isAuthenticated, role, name, room_id } = user;
    const dispatch = useDispatch();
    const navigate = useNavigate(); // Get the useNavigate hook
+   const wsRef = useRef<WebSocket | null>(null);
 
    const menuItems = useMemo(
       () => [
@@ -77,10 +91,96 @@ const App: React.FC = () => {
       []
    );
 
-   const handleLogout = useCallback(() => {
-      dispatch(logout());
-      navigate("/"); // Redirect to the login page
-   }, [dispatch]);
+   const handleLogout = useCallback(async () => {
+      try {
+         await axios.post(`${config.backend.url}/logout`); // Call the logout API
+         dispatch(logout());
+         navigate("/");
+      } catch (error) {
+         console.error("Logout error:", error);
+         message.error("退出登录失败");
+      }
+   }, [dispatch, navigate]);
+
+   useEffect(() => {
+      let ws: WebSocket | null = null;
+      const connectToWebSocket = () => {
+         console.log("Connecting to WebSocket server...", `${config.backend.ws_url}`);
+         ws = new WebSocket(`${config.backend.ws_url}`);
+
+         ws.onopen = () => {
+            console.log("Connected to WebSocket server");
+
+            // Wait for the connection to be fully open (readyState === 1)
+            const waitForOpenConnection = setInterval(() => {
+               console.log("Waiting for WebSocket connection to be open...");
+               if (ws?.readyState === WebSocket.OPEN) {
+                  console.log("WebSocket connection is open.");
+                  clearInterval(waitForOpenConnection);
+
+                  // Subscribe to all rooms or specific rooms based on user role
+                  if (user.role === "admin") {
+                     ws?.send(JSON.stringify({ type: "subscribe", topic: "/rooms/all" }));
+                  } else if (user.role === "user" && user.room_id) {
+                     ws?.send(JSON.stringify({ type: "subscribe", topic: `/rooms/${user.room_id}` }));
+                  } else {
+                     console.log("no role");
+                  }
+               }
+            }, 100); // Check every 100ms
+         };
+
+         // 设置 ws.onmessage 处理所有消息类型
+         ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === "subscribe") {
+               // 处理订阅响应
+               if (data.success) {
+                  console.info(`Subscribed to ${data.topic}`);
+               } else {
+                  console.error(`Failed to subscribe to ${data.topic}: ${data.error}`);
+               }
+            } else if (data.type === "roomData") {
+               dispatch(updateRoomData(data));
+            } else if (data.type === "alertMessage") {
+               dispatch(addAlarm(data));
+            } else if (data.type === "networkFailure") {
+               // 更新对应房间的网络故障状态
+               dispatch(setRoomNetworkFailure({ roomId: data.roomId, status: true }));
+            } else if (data.type === "radarFailure") {
+               // 更新对应房间的网络故障状态
+               dispatch(setRoomRadarFailure({ roomId: data.roomId, status: true }));
+            } else if (data.type === "radarAbnormal") {
+               // 更新对应房间的网络故障状态
+               dispatch(setRoomRadarAbnormal({ roomId: data.roomId, status: true }));
+            }
+         };
+
+         ws.onclose = () => {
+            console.log("Disconnected from WebSocket server");
+         };
+
+         ws.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            // 添加错误处理逻辑，例如向用户显示错误消息或尝试重新连接
+         };
+
+         wsRef.current = ws; // Store the WebSocket instance in the ref
+      };
+
+      connectToWebSocket();
+      // Cleanup function to close the WebSocket connection and unsubscribe
+      return () => {
+         if (wsRef.current) {
+            // Unsubscribe from all subscribed topics (you'll need to implement this)
+            //   unsubscribeFromAllTopics(wsRef.current);
+
+            wsRef.current.close();
+            wsRef.current = null; // Clear the reference
+         }
+      };
+   }, [user.role, user.room_id, dispatch]);
 
    return (
       <Layout style={{ minHeight: "100vh" }}>
@@ -119,7 +219,9 @@ const App: React.FC = () => {
                   <Route path='/login' element={<Login />} />
                   <Route
                      path='/room'
-                     element={isAuthenticated ? <RoomPage roomId={0} gender={""} age={0} /> : <Navigate to='/login' />}
+                     element={
+                        isAuthenticated ? <RoomPage roomId={room_id} gender={""} age={0} /> : <Navigate to='/login' />
+                     }
                   />
                </Routes>
             )}

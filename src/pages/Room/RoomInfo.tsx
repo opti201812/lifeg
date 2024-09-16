@@ -2,11 +2,11 @@ import React from "react";
 import { Tag, Typography } from "antd";
 
 export const RoomInfo: React.FC<{
-   roomId: number;
+   roomName: string;
    age: number;
    gender: string;
    type: string;
-}> = ({ roomId, age, gender, type }) => {
+}> = ({ roomName, age, gender, type }) => {
    return (
       <div
          style={{
@@ -23,9 +23,9 @@ export const RoomInfo: React.FC<{
          </Typography.Title>
 
          <div>
-            <Tag color='blue'>房间：{"Room1"}</Tag>
-            <Tag color='green'>年龄：{55}</Tag>
-            <Tag color='purple'>性别：{"男"}</Tag>
+            <Tag color='blue'>房间：{roomName}</Tag>
+            <Tag color='green'>年龄：{age}</Tag>
+            <Tag color='purple'>性别：{gender}</Tag>
          </div>
       </div>
    );

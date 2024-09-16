@@ -1,10 +1,13 @@
 // components/HistoryData/index.tsx
 import React, { useState, useEffect } from "react";
 import { Table, Button, Input, DatePicker, Select, Space, message, Form, Row, Col } from "antd";
-import { SearchOutlined, ReloadOutlined, DownloadOutlined } from "@ant-design/icons";
+import { SearchOutlined, ReloadOutlined, DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import axios from "axios";
 import config from "../../config";
+import { jsPDF } from "jspdf"; // Import jsPDF for PDF generation
+import autoTable from "jspdf-autotable"; // Import autoTable plugin for table generation in PDF
+import * as XLSX from "xlsx"; // Import XLSX for Excel export
 
 const { RangePicker } = DatePicker;
 
@@ -23,9 +26,17 @@ const HistoryData: React.FC = () => {
    const [personnelOptions, setPersonnelOptions] = useState<
       {
          value: number;
+         key: number;
          label: string;
       }[]
    >([]);
+   const [nameOptions, setNameOptions] = useState<
+      {
+         value: string;
+         key: string;
+         label: string;
+      }[]
+   >([]); // 新增 nameOptions
    const [form] = Form.useForm();
    const [filters, setFilters] = useState({
       personnelId: null,
@@ -39,14 +50,24 @@ const HistoryData: React.FC = () => {
       const fetchPersonnelOptions = async () => {
          try {
             const response = await axios.get(`${config.backend.url}/personnel`);
+
             const options = response.data.map((person: any) => ({
-               value: person.id,
-               label: person.name,
+               value: person.id, // 修改为 id
+               key: person.id,
+               label: person.id,
             }));
             setPersonnelOptions(options);
+
+            // 获取 nameOptions
+            const names = response.data.map((person: any) => ({
+               value: person.id,
+               key: person.id,
+               label: person.name,
+            }));
+            setNameOptions(names.map((name: any) => ({ value: name.value, key: name.key, label: name.label })));
          } catch (error) {
             console.error("Error fetching personnel options:", error);
-            message.error("Failed to load personnel options");
+            message.error("获取人员列表失败");
          }
       };
 
@@ -59,15 +80,13 @@ const HistoryData: React.FC = () => {
    const handleSearch = async () => {
       try {
          const queryParams = new URLSearchParams();
-         console.log("==> ~ queryParams:", queryParams);
-         console.log("==> ~ filters:", filters);
          if (filters?.personnelId) {
             queryParams.append("personnelId", (filters?.personnelId as number).toString());
          }
          if (filters?.name) {
-            queryParams.append("name", filters.name);
+            queryParams.append("personnelId", filters.name);
          }
-         if (filters?.dateRange && (filters.dateRange as dayjs.Dayjs[]).length === 2) {
+         if (filters.dateRange && (filters.dateRange as dayjs.Dayjs[]).length === 2) {
             queryParams.append("startDate", (filters.dateRange[0] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss"));
             queryParams.append("endDate", (filters.dateRange[1] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss"));
          }
@@ -79,7 +98,7 @@ const HistoryData: React.FC = () => {
          setHistoricalData(response.data || []);
       } catch (error) {
          console.error("Error fetching historical data:", error);
-         message.error("Failed to load historical data");
+         message.error("获取历史信息失败！");
       }
    };
 
@@ -94,8 +113,22 @@ const HistoryData: React.FC = () => {
    };
 
    const handleExport = () => {
-      // Implement your export logic here (e.g., generate CSV or Excel file)
-      console.log("Exporting data:", historicalData);
+      // Export to Excel
+      const ws = XLSX.utils.json_to_sheet(historicalData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Historical Data");
+      XLSX.writeFile(wb, "historical_data.xlsx");
+   };
+
+   const handlePrint = () => {
+      // Generate PDF and print
+      const doc = new jsPDF();
+      autoTable(doc, {
+         head: [columns.map((col) => col.title)],
+         body: historicalData.map((row) => Object.values(row)),
+      });
+      doc.autoPrint();
+      doc.output("dataurlnewwindow"); // Open in new window for printing
    };
 
    const columns = [
@@ -114,7 +147,7 @@ const HistoryData: React.FC = () => {
       },
       {
          title: "日期时间",
-         dataIndex: "update_date", // Todo: should be time!!
+         dataIndex: "time",
          key: "time",
          render: (dateTime: string) => dayjs(dateTime).format("YYYY-MM-DD HH:mm:ss"),
       },
@@ -127,9 +160,18 @@ const HistoryData: React.FC = () => {
             layout='vertical'
             onFinish={handleSearch}
             form={form}
-            onValuesChange={(changedValues, allValues) => setFilters(allValues)}
+            onValuesChange={(changedValues, allValues) => {
+               // 当 personnelId 改变时，清空 name
+               if (changedValues.personnelId !== undefined) {
+                  allValues.name = "";
+               }
+               // 当 name 改变时，清空 personnelId
+               if (changedValues.name !== undefined) {
+                  allValues.personnelId = null;
+               }
+               setFilters(allValues);
+            }}
          >
-            {" "}
             {/* 将 layout 改为 vertical */}
             <Row gutter={16}>
                {" "}
@@ -145,12 +187,23 @@ const HistoryData: React.FC = () => {
                         }
                         options={personnelOptions}
                         allowClear
+                        disabled={!!filters.name} // 禁用 name 输入框，如果 personnelId 已选
                      />
                   </Form.Item>
                </Col>
                <Col span={6}>
                   <Form.Item label='姓名' name='name'>
-                     <Input placeholder='请输入姓名' />
+                     <Select
+                        showSearch
+                        placeholder='请选择姓名'
+                        optionFilterProp='children'
+                        filterOption={(input, option) =>
+                           (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                        }
+                        options={nameOptions}
+                        allowClear
+                        disabled={!!filters.personnelId} // 禁用 name 输入框，如果 personnelId 已选
+                     />
                   </Form.Item>
                </Col>
                <Col span={6}>
@@ -168,7 +221,6 @@ const HistoryData: React.FC = () => {
                </Col> */}
             </Row>
             <Form.Item style={{ textAlign: "right" }}>
-               {" "}
                {/* 将按钮居右 */}
                <Space>
                   <Button type='primary' htmlType='submit' icon={<SearchOutlined />}>
@@ -180,6 +232,9 @@ const HistoryData: React.FC = () => {
                   <Button onClick={handleExport} icon={<DownloadOutlined />}>
                      导出
                   </Button>
+                  <Button onClick={handlePrint} icon={<PrinterOutlined />}>
+                     打印
+                  </Button>{" "}
                </Space>
             </Form.Item>
          </Form>

@@ -1,9 +1,14 @@
+// components/AlarmDisplay/index.tsx
+
 import React, { useState, useEffect } from "react";
 import { Table, Button, Input, DatePicker, Select, Space, message, Form, Row, Col } from "antd";
-import { SearchOutlined, ReloadOutlined, DownloadOutlined } from "@ant-design/icons";
+import { SearchOutlined, ReloadOutlined, DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import axios from "axios";
 import config from "../../config";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx"; // Import XLSX for Excel export
 
 const { RangePicker } = DatePicker;
 
@@ -24,6 +29,14 @@ const AlarmDisplay: React.FC = () => {
    const [personnelOptions, setPersonnelOptions] = useState<
       {
          value: number;
+         key: number;
+         label: string;
+      }[]
+   >([]);
+   const [nameOptions, setNameOptions] = useState<
+      {
+         value: number; // 注意：这里 value 存储的是人员 id
+         key: number;
          label: string;
       }[]
    >([]);
@@ -37,35 +50,44 @@ const AlarmDisplay: React.FC = () => {
    });
 
    useEffect(() => {
-      // Fetch initial personnel options for the dropdown
       const fetchPersonnelOptions = async () => {
          try {
             const response = await axios.get(`${config.backend.url}/personnel`);
             const options = response.data.map((person: any) => ({
                value: person.id,
-               label: person.name,
+               key: person.id,
+               label: person.id,
             }));
             setPersonnelOptions(options);
+
+            const names = response.data.map((person: any) => ({
+               value: person.id, // 注意：这里 value 存储的是人员 id
+               key: person.id,
+               label: person.name,
+            }));
+            setNameOptions(names);
          } catch (error) {
             console.error("Error fetching personnel options:", error);
-            message.error("Failed to load personnel options");
+            message.error("获取人员信息失败！");
          }
       };
 
       fetchPersonnelOptions();
-
-      // Fetch initial alarm data
       handleSearch();
    }, []);
 
    const handleSearch = async () => {
       try {
          const queryParams = new URLSearchParams();
-         if (filters.personnelId !== null) {
+         if (filters.personnelId) {
             queryParams.append("personnelId", (filters.personnelId as number).toString());
          }
+         // 当选择姓名时，使用对应的 id 发送请求
          if (filters.name) {
-            queryParams.append("name", filters.name);
+            const selectedNameOption = nameOptions.find((option) => option.label === filters.name);
+            if (selectedNameOption) {
+               queryParams.append("personnelId", selectedNameOption.value.toString());
+            }
          }
          if (filters.dateRange && (filters.dateRange as dayjs.Dayjs[]).length === 2) {
             queryParams.append("startDate", (filters.dateRange[0] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss"));
@@ -85,11 +107,11 @@ const AlarmDisplay: React.FC = () => {
             );
          }
 
-         const response = await axios.get(`${config.backend.url}/history/alarms?${queryParams.toString()}`); // 假设后端接口为 /history/alarms
+         const response = await axios.get(`${config.backend.url}/history/alarms?${queryParams.toString()}`);
          setAlarmData(response.data || []);
       } catch (error) {
          console.error("Error fetching alarm data:", error);
-         message.error("Failed to load alarm data");
+         message.error("获取报警数据失败！");
       }
    };
 
@@ -99,13 +121,30 @@ const AlarmDisplay: React.FC = () => {
          name: "",
          dateRange: null,
          alarmLevel: null,
-         handlingTimeRange: null, // 新增：重置处理时间筛选
+         handlingTimeRange: null,
       });
+      form.resetFields();
    };
 
    const handleExport = () => {
       // Implement your export logic here (e.g., generate CSV or Excel file)
       console.log("Exporting data:", alarmData);
+      // Export to Excel
+      const ws = XLSX.utils.json_to_sheet(alarmData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Alarm Data");
+      XLSX.writeFile(wb, "alarm_data.xlsx");
+   };
+
+   const handlePrint = () => {
+      const doc = new jsPDF();
+      autoTable(doc, {
+         head: [columns.map((col) => col.title)],
+         // body: alarmData.map((row) => columns.map((col) => col.render ? col.render(row[col.dataIndex]) : row[col.dataIndex])),
+         body: alarmData.map((row) => Object.values(row)),
+      });
+      doc.autoPrint();
+      doc.output("dataurlnewwindow");
    };
 
    const columns = [
@@ -114,13 +153,29 @@ const AlarmDisplay: React.FC = () => {
       { title: "心率", dataIndex: "heart_rate", key: "heartRate" },
       { title: "呼吸", dataIndex: "breath_rate", key: "breathRate" },
       { title: "距离", dataIndex: "distance", key: "distance" },
-      { title: "告警级别", dataIndex: "alarm_level", key: "alarmLevel" }, // 修改：告警级别
-      { title: "处理方法", dataIndex: "handling_method", key: "handlingMethod" }, // 新增：处理方法
+      {
+         title: "告警级别",
+         dataIndex: "alarm_level",
+         key: "alarmLevel",
+         render: (alarmLevel: string) => {
+            switch (alarmLevel) {
+               case "1":
+                  return "极度危险";
+               case "2":
+                  return "危险";
+               case "3":
+                  return "异常";
+               default:
+                  return "无";
+            }
+         },
+      },
+      { title: "处理方法", dataIndex: "handling_method", key: "handlingMethod" },
       {
          title: "处理时间",
          dataIndex: "handling_time",
          key: "handlingTime",
-         render: (handlingTime: string) => (handlingTime ? dayjs(handlingTime).format("YYYY-MM-DD HH:mm:ss") : ""), // 格式化处理时间
+         render: (handlingTime: string) => (handlingTime ? dayjs(handlingTime).format("YYYY-MM-DD HH:mm:ss") : ""),
       },
       {
          title: "告警时间",
@@ -133,7 +188,20 @@ const AlarmDisplay: React.FC = () => {
    return (
       <div>
          <h2>告警信息</h2>
-         <Form layout='vertical' onFinish={handleSearch}>
+         <Form
+            layout='vertical'
+            onFinish={handleSearch}
+            form={form}
+            onValuesChange={(changedValues, allValues) => {
+               if (changedValues.personnelId !== undefined) {
+                  allValues.name = "";
+               }
+               if (changedValues.name !== undefined) {
+                  allValues.personnelId = null;
+               }
+               setFilters(allValues);
+            }}
+         >
             <Row gutter={16}>
                <Col span={4}>
                   <Form.Item label='人员编号' name='personnelId'>
@@ -146,22 +214,37 @@ const AlarmDisplay: React.FC = () => {
                         }
                         options={personnelOptions}
                         allowClear
+                        disabled={!!filters.name}
                      />
                   </Form.Item>
                </Col>
                <Col span={5}>
                   <Form.Item label='姓名' name='name'>
-                     <Input placeholder='请输入姓名' />
+                     <Select
+                        showSearch
+                        placeholder='请选择姓名'
+                        optionFilterProp='children'
+                        filterOption={(input, option) =>
+                           (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                        }
+                        options={nameOptions}
+                        allowClear
+                        disabled={!!filters.personnelId}
+                     />
                   </Form.Item>
                </Col>
                <Col span={5}>
                   <Form.Item label='告警级别' name='alarmLevel'>
-                     {" "}
-                     {/* 修改：告警级别筛选 */}
-                     <Select allowClear placeholder='请选择'>
-                        <Select.Option value='low'>低</Select.Option>
-                        <Select.Option value='medium'>中</Select.Option>
-                        <Select.Option value='high'>高</Select.Option>
+                     <Select allowClear placeholder='请选择' disabled>
+                        <Select.Option key='1' value='1'>
+                           极度危险
+                        </Select.Option>
+                        <Select.Option key='2' value='2'>
+                           危险
+                        </Select.Option>
+                        <Select.Option key='3' value='3'>
+                           异常
+                        </Select.Option>
                      </Select>
                   </Form.Item>
                </Col>
@@ -177,9 +260,7 @@ const AlarmDisplay: React.FC = () => {
                   </Form.Item>
                </Col>
             </Row>
-
             <Form.Item style={{ textAlign: "right" }}>
-               {" "}
                {/* 将按钮居右 */}
                <Space>
                   <Button type='primary' htmlType='submit' icon={<SearchOutlined />}>
@@ -191,6 +272,9 @@ const AlarmDisplay: React.FC = () => {
                   <Button onClick={handleExport} icon={<DownloadOutlined />}>
                      导出
                   </Button>
+                  <Button onClick={handlePrint} icon={<PrinterOutlined />}>
+                     打印
+                  </Button>{" "}
                </Space>
             </Form.Item>
          </Form>
