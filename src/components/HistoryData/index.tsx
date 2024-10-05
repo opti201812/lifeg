@@ -113,20 +113,50 @@ const HistoryData: React.FC = () => {
    };
 
    const handleExport = () => {
+      const newData = historicalData.map((item: any) => {
+         const {
+            time,
+            room_id,
+            personnel_id,
+            breath_rate,
+            breathRateMax,
+            breathRateMin,
+            heart_rate,
+            heartRateMax,
+            heartRateMin,
+            u60heart_rate,
+            u60heartRateMax,
+            u60heartRateMin,
+            target_distance,
+            targetDistanceMax,
+            targetDistanceMin,
+            environment,
+         } = item;
+
+         return {
+            人员编号: personnel_id,
+            房间编号: room_id,
+            心率: heart_rate,
+            呼吸: breath_rate,
+            距离: target_distance,
+            日期时间: time,
+         };
+      });
       // Export to Excel
-      const ws = XLSX.utils.json_to_sheet(historicalData);
+      const ws = XLSX.utils.json_to_sheet(newData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Historical Data");
       XLSX.writeFile(wb, "historical_data.xlsx");
    };
 
-   const handlePrint = () => {
+   const handlePrint = async () => {
       // Generate PDF and print
       const doc = new jsPDF();
-      autoTable(doc, {
-         head: [columns.map((col) => col.title)],
+      const op = {
+         head: [columns.map((col) => col.key)],
          body: historicalData.map((row) => Object.values(row)),
-      });
+      };
+      autoTable(doc, op);
       doc.autoPrint();
       doc.output("dataurlnewwindow"); // Open in new window for printing
    };
@@ -134,17 +164,24 @@ const HistoryData: React.FC = () => {
    const columns = [
       { title: "人员编号", dataIndex: "personnel_id", key: "personnel_id" },
       { title: "姓名", dataIndex: "name", key: "name" },
-      { title: "心率", dataIndex: "heart_rate", key: "heart_rate" },
-      { title: "呼吸", dataIndex: "breath_rate", key: "breath_rate" },
-      { title: "距离", dataIndex: "target_distance", key: "target_distance" }, // Assuming 'distance' is 'target_distance' in the API response
+      { title: "心率(次/分)", dataIndex: "heart_rate", key: "heart_rate" },
+      { title: "呼吸(次/分)", dataIndex: "breath_rate", key: "breath_rate" },
       {
-         title: "是否告警",
-         dataIndex: "is_alarm", // Assuming 'isAlarm' is 'is_alarm' in the API response
-         key: "is_alarm",
-         render: (isAlarm: boolean) => (
-            <span style={{ color: isAlarm ? "red" : "inherit" }}>{isAlarm ? "是" : "否"}</span>
-         ),
-      },
+         title: "距离(米)",
+         dataIndex: "target_distance",
+         key: "target_distance",
+         render: (text: string, record: any) => {
+            return (parseInt(text) / 100).toFixed(2);
+         },
+      }, // Assuming 'distance' is 'target_distance' in the API response
+      // {
+      //    title: "是否告警",
+      //    dataIndex: "is_alarm", // Assuming 'isAlarm' is 'is_alarm' in the API response
+      //    key: "is_alarm",
+      //    render: (isAlarm: boolean) => (
+      //       <span style={{ color: isAlarm ? "red" : "inherit" }}>{isAlarm ? "是" : "否"}</span>
+      //    ),
+      // },
       {
          title: "日期时间",
          dataIndex: "time",
@@ -172,10 +209,7 @@ const HistoryData: React.FC = () => {
                setFilters(allValues);
             }}
          >
-            {/* 将 layout 改为 vertical */}
             <Row gutter={16}>
-               {" "}
-               {/* 添加 Row 来包裹筛选条件 */}
                <Col span={6}>
                   <Form.Item label='人员编号' name='personnelId'>
                      <Select

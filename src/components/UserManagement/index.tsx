@@ -22,7 +22,7 @@ const UserManagement: React.FC = () => {
             setUsers(response.data.user || []);
          } catch (error) {
             console.error("Error fetching users:", error);
-            message.error("获取用户列表失败！"); // Add an error message
+            message.error("获取账户列表失败！"); // Add an error message
          }
       };
       fetchUsers();
@@ -46,7 +46,7 @@ const UserManagement: React.FC = () => {
          try {
             if (user.account.toLowerCase() === "admin") {
                // Prevent creating a user with the username "admin"
-               message.error("不允许创建用户名为admin的账户");
+               message.error("不允许创建账户名为admin的账户");
                return;
             }
 
@@ -71,10 +71,10 @@ const UserManagement: React.FC = () => {
 
             setUsers(users.map((u) => (u.id === user.id ? updatedUser.user : u)));
             setIsModalVisible(false);
-            message.success("更新用户信息成功");
+            message.success("更新账户信息成功");
          } catch (error) {
             console.error("Error editing user:", error);
-            message.error("更新用户信息失败！"); // Add an error message
+            message.error("更新账户信息失败！"); // Add an error message
          }
       },
       [users]
@@ -85,7 +85,7 @@ const UserManagement: React.FC = () => {
          Modal.confirm({
             title: "确认删除",
             icon: <ExclamationCircleOutlined />,
-            content: "您确定要删除该用户吗？",
+            content: "您确定要删除该账户吗？",
             okText: "确定",
             cancelText: "取消",
             onOk: async () => {
@@ -150,13 +150,13 @@ const UserManagement: React.FC = () => {
 
    return (
       <div style={settingSpace}>
-         <h2>用户管理</h2>
+         <h2>账户管理</h2>
          <Button type='primary' onClick={() => showModal(null)}>
-            新增用户
+            新增账户
          </Button>
          <Table dataSource={users} columns={columns} rowKey='id' />
          <Modal
-            title={editingUser ? "编辑用户" : "新增用户"}
+            title={editingUser ? "编辑账户" : "新增账户"}
             open={isModalVisible}
             onCancel={handleCancel}
             footer={null}

@@ -1,0 +1,10 @@
+.multiline-input {
+   white-space: pre-wrap;
+   height: auto;
+   overflow: hidden;
+   display: block;
+}
+
+.rmdp-container {
+   display: block !important;
+}

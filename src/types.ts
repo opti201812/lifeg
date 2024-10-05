@@ -2,7 +2,7 @@
 
 export interface AlertConfig {
    config_name: string;
-   value: string;
+   value: string | number | boolean;
 }
 
 export interface SmsConfig {
@@ -52,6 +52,7 @@ export interface Room {
    networkFailure?: boolean; // Add networkFailure (optional)
    radarFailure?: boolean; // Add radarFailure (optional)
    radarAbnormal?: boolean; // Add radar  (optional)
+   person_pose?: string; // Add person_pose (optional)
 }
 
 export interface User {
@@ -89,6 +90,7 @@ export interface Personnel {
    remark?: string;
    schedules?: PersonnelSchedule[]; // Array of schedules
    gender?: string; // Optional, as it might not be required for all personnel
+   is_out?: boolean | string; // Optional
 }
 
 export const MEDICAL_HISTORIES = [
@@ -102,28 +104,20 @@ export const MEDICAL_HISTORIES = [
    { value: "d7", label: "心室颤动" },
 ];
 
+export interface OpenIdItem {
+   key: number;
+   openid: string;
+   name: string;
+}
+
 export interface MiniConfig {
-   isEnabled: boolean;
-   provider: string;
-   accountSid: string;
-   authToken: string;
-   fromNumber: string;
-   defaultMessage: string;
-   verificationCodeValidity: number;
-   port: string;
-   baudRate: number;
+   wechatEnabled: boolean;
+   wechatOpenIdList: OpenIdItem[];
 }
 
 export const defaultMiniConfig: MiniConfig = {
-   isEnabled: true,
-   provider: "",
-   accountSid: "",
-   authToken: "",
-   fromNumber: "",
-   defaultMessage: "",
-   verificationCodeValidity: 120,
-   port: "USB1",
-   baudRate: 9600,
+   wechatEnabled: false,
+   wechatOpenIdList: [],
 };
 
 export interface DataPoint {

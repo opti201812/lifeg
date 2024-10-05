@@ -13,7 +13,6 @@ const EntryExitManagement: React.FC = () => {
    const [availablePersonnel, setAvailablePersonnel] = useState<Personnel[]>([]);
    const [isModalVisible, setIsModalVisible] = useState(false);
    const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-   const [availableRadars, setAvailableRadars] = useState<Radar[]>([]); // State to store available radar options
    const [selectedPersonnel, setSelectedPersonnel] = useState<Personnel | null>(null);
    const [form] = Form.useForm();
 
@@ -28,13 +27,6 @@ const EntryExitManagement: React.FC = () => {
          } catch (error) {
             console.error("Error fetching data:", error);
             message.error("获取房间信息失败！");
-         }
-         try {
-            const response = await axios.get(`${config.backend.url}/rooms/available-radars`);
-            setAvailableRadars(response.data || []);
-         } catch (error) {
-            console.error("Error fetching available radars:", error);
-            message.error("获取雷达信息失败！");
          }
       };
 
@@ -54,7 +46,9 @@ const EntryExitManagement: React.FC = () => {
                const occupiedPersonnelIds = rooms.flatMap((room) => room.personnel_id);
 
                // 过滤掉已入住的人员
-               const available = res.data.filter((p: Personnel) => !occupiedPersonnelIds.includes(p.id));
+               const available = res.data.filter(
+                  (p: Personnel) => !occupiedPersonnelIds.includes(p.id) && p.is_out !== "true"
+               );
                // Sort by update_date in descending order (latest first)
                available.sort(
                   (a: any, b: any) => new Date(b.update_date).getTime() - new Date(a.update_date).getTime()

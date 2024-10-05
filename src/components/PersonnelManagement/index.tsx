@@ -1,12 +1,11 @@
 // components/PersonnelManagement/index.tsx
 import React, { useState, useCallback, useEffect } from "react";
-import { Table, Button, Modal, message } from "antd";
+import { Table, Button, message } from "antd";
 import { settingSpace } from "../../styles/theme";
 import axios from "axios";
 import config from "../../config";
 import { MEDICAL_HISTORIES, Personnel, Room } from "../../types";
-import { ExclamationCircleOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 const PersonnelManagement: React.FC = () => {
    const [personnelData, setPersonnelData] = useState<Personnel[]>([]); // Changed 'users' to 'personnelData'
@@ -26,29 +25,6 @@ const PersonnelManagement: React.FC = () => {
       fetchPersonnel();
    }, []);
 
-   const handleDeletePersonnel = useCallback(
-      async (id: number) => {
-         Modal.confirm({
-            title: "确认删除",
-            icon: <ExclamationCircleOutlined />,
-            content: "您确定要删除该人员吗？",
-            okText: "确定",
-            cancelText: "取消",
-            onOk: async () => {
-               try {
-                  await axios.delete(`${config.backend.url}/personnel/${id}`);
-                  setPersonnelData(personnelData.filter((u) => u.id !== id)); // Update personnelData
-                  message.success("删除人员成功");
-               } catch (error) {
-                  console.error("Error deleting personnel:", error);
-                  message.error("删除人员失败");
-               }
-            },
-         });
-      },
-      [config.backend.url, personnelData]
-   );
-
    const columns = [
       { title: "人员编号", dataIndex: "id", key: "id" }, // Access nested property
       { title: "姓名", dataIndex: "name", key: "name" }, // Access nested property
@@ -66,24 +42,25 @@ const PersonnelManagement: React.FC = () => {
             const matchingHistory = MEDICAL_HISTORIES.find((item) => item.value === value);
             return matchingHistory ? matchingHistory.label : value; // Display label or original value if not found
          },
-      }, // Access nested property
-      { title: "备注", dataIndex: "remark", key: "remark" }, // Access nested property
+      },
+      { title: "其它病史", dataIndex: "remark", key: "remark" }, // Access nested property
       {
          title: "操作",
          key: "action",
          render: (_: any, record: any) => (
-            <>
-               <Button onClick={() => navigate(`/personnel-management/${record.id}`)}>编辑</Button>{" "}
-               {/* Navigate to edit page */}
-               <Button onClick={() => handleDeletePersonnel(record.id)}>删除</Button>
-            </>
+            <div style={{ display: "flex", alignItems: "center" }}>
+               <Button onClick={() => navigate(`/personnel-management/${record.id}`)}>编辑</Button>
+               <Link to={`/entry-exit-management`} style={{ marginLeft: "8px" }}>
+                  进出场
+               </Link>
+            </div>
          ),
       },
    ];
 
    return (
       <div style={settingSpace}>
-         <h2>人员信息管理</h2>
+         <h2>人员管理</h2>
          <Button type='primary' onClick={() => navigate(`/personnel-management/new`)}>
             新增人员
          </Button>

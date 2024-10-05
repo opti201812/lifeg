@@ -76,6 +76,16 @@ const AlarmDisplay: React.FC = () => {
       handleSearch();
    }, []);
 
+   // 使用useEffect，当filters.name不为空时，删除columns中的name列
+   useEffect(() => {
+      if (filters.name) {
+         const updatedColumns = initialColumns.filter((column) => column.dataIndex !== "name");
+         setColumns(updatedColumns);
+      } else {
+         setColumns(initialColumns);
+      }
+   }, [filters.name]);
+
    const handleSearch = async () => {
       try {
          const queryParams = new URLSearchParams();
@@ -84,10 +94,7 @@ const AlarmDisplay: React.FC = () => {
          }
          // 当选择姓名时，使用对应的 id 发送请求
          if (filters.name) {
-            const selectedNameOption = nameOptions.find((option) => option.label === filters.name);
-            if (selectedNameOption) {
-               queryParams.append("personnelId", selectedNameOption.value.toString());
-            }
+            queryParams.append("personnelId", filters.name);
          }
          if (filters.dateRange && (filters.dateRange as dayjs.Dayjs[]).length === 2) {
             queryParams.append("startDate", (filters.dateRange[0] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss"));
@@ -128,9 +135,18 @@ const AlarmDisplay: React.FC = () => {
 
    const handleExport = () => {
       // Implement your export logic here (e.g., generate CSV or Excel file)
-      console.log("Exporting data:", alarmData);
-      // Export to Excel
-      const ws = XLSX.utils.json_to_sheet(alarmData);
+      const newData = alarmData.map((item: any) => ({
+         ID: item.id,
+         房间编号: item.room_id,
+         人员编号: item.personnel_id,
+         心率: item.heart_rate,
+         呼吸频率: item.breath_rate,
+         距离: item.distance,
+         报警等级: item.alarm_level,
+         处理时间: item.handling_time,
+         处理方式: item.handling_method,
+      }));
+      const ws = XLSX.utils.json_to_sheet(newData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Alarm Data");
       XLSX.writeFile(wb, "alarm_data.xlsx");
@@ -139,7 +155,7 @@ const AlarmDisplay: React.FC = () => {
    const handlePrint = () => {
       const doc = new jsPDF();
       autoTable(doc, {
-         head: [columns.map((col) => col.title)],
+         head: [columns.map((col) => col.key)],
          // body: alarmData.map((row) => columns.map((col) => col.render ? col.render(row[col.dataIndex]) : row[col.dataIndex])),
          body: alarmData.map((row) => Object.values(row)),
       });
@@ -147,12 +163,19 @@ const AlarmDisplay: React.FC = () => {
       doc.output("dataurlnewwindow");
    };
 
-   const columns = [
+   const initialColumns = [
       { title: "人员编号", dataIndex: "personnel_id", key: "personnelId" },
       { title: "姓名", dataIndex: "name", key: "name" },
-      { title: "心率", dataIndex: "heart_rate", key: "heartRate" },
-      { title: "呼吸", dataIndex: "breath_rate", key: "breathRate" },
-      { title: "距离", dataIndex: "distance", key: "distance" },
+      { title: "心率(次/分)", dataIndex: "heart_rate", key: "heartRate" },
+      { title: "呼吸(次/分)", dataIndex: "breath_rate", key: "breathRate" },
+      {
+         title: "距离(米)",
+         dataIndex: "distance",
+         key: "distance",
+         render: (text: string) => {
+            return text ? (parseInt(text) / 100).toFixed(2) : "";
+         },
+      },
       {
          title: "告警级别",
          dataIndex: "alarm_level",
@@ -184,6 +207,8 @@ const AlarmDisplay: React.FC = () => {
          render: (dateTime: string) => dayjs(dateTime).format("YYYY-MM-DD HH:mm:ss"),
       },
    ];
+
+   const [columns, setColumns] = useState(initialColumns);
 
    return (
       <div>
@@ -279,7 +304,7 @@ const AlarmDisplay: React.FC = () => {
             </Form.Item>
          </Form>
 
-         <Table dataSource={alarmData} columns={columns} />
+         <Table dataSource={alarmData} columns={columns} key={"id"} />
       </div>
    );
 };

@@ -118,9 +118,7 @@ const PersonnelDetails: React.FC = () => {
                onFinish={handleSave}
                autoComplete='off'
             >
-               <Tabs defaultActiveKey='1' items={tabItems}>
-                  {" "}
-               </Tabs>
+               <Tabs defaultActiveKey='1' items={tabItems} />
                <Form.Item
                   wrapperCol={{ span: 24 }}
                   style={{

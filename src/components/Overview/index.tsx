@@ -8,34 +8,13 @@ import "./Overview.css";
 import RoomPage from "../../pages/Room";
 import { useDispatch, useSelector } from "react-redux";
 import { MEDICAL_HISTORIES, Room, User } from "../../types";
-import axios from "axios";
-import config from "../../config";
 import { RootState } from "../../store";
-import { setRooms } from "../../store/dataSlice";
+import { FaBed, FaChair, FaWalking } from "react-icons/fa"; // 使用react-icons库
 
 const Overview: React.FC = () => {
-   const dispatch = useDispatch();
    const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
    const rooms = useSelector((state: RootState) => state.data.rooms); // Get rooms from Redux store
    const alarms = useSelector((state: RootState) => state.data.alarms); // Get alarms from Redux store
-
-   useEffect(() => {
-      // Fetch room data from API
-      const fetchRooms = async () => {
-         try {
-            const response = await axios.get(`${config.backend.url}/rooms`);
-            const roomsData = response.data.map((room: Room) => ({
-               ...room,
-               enabled: room.enabled as unknown,
-            }));
-            dispatch(setRooms(roomsData || [])); // Dispatch the setRooms action
-         } catch (error) {
-            console.error("Error fetching rooms:", error);
-            message.error("获取房间信息失败！");
-         }
-      };
-      fetchRooms();
-   }, []);
 
    const getTagInfo = (room: Room) => {
       if (!room.personnel_id) {
@@ -62,43 +41,60 @@ const Overview: React.FC = () => {
       }
 
       const now = dayjs();
-      const currentDay = now.day() + 1; // 0 (Sunday) to 6 (Saturday), convert to 1-7
+      const currentYear = now.year();
+      const currentMonth = now.month() + 1; // Months are 0-based
+      const currentDay = now.date();
       const currentHour = now.hour();
       const currentMinute = now.minute();
 
+      const currentDateTime = dayjs(new Date(currentYear, currentMonth - 1, currentDay, currentHour, currentMinute));
+
       for (const schedule of room.schedules) {
-         const daysOfWeek = schedule.days_of_week.split(",").map(Number);
-         if (!daysOfWeek.includes(currentDay)) {
-            continue; // Schedule doesn't apply to this day
-         }
+         const daysOfWeek = JSON.parse(schedule.days_of_week);
 
-         const [startHour, startMinute] = schedule.start_time.split(":").map(Number);
-         const [endHour, endMinute] = schedule.end_time.split(":").map(Number);
+         for (const dateRange of daysOfWeek) {
+            const [startDate, endDate] = dateRange.map((date: string) => dayjs(date, "YYYY-MM-DD"));
+            let date = startDate;
 
-         // Handle cross-day schedules
-         if (endHour < startHour) {
-            if (
-               currentHour > startHour ||
-               (currentHour === startHour && currentMinute >= startMinute) ||
-               currentHour < endHour ||
-               (currentHour === endHour && currentMinute <= endMinute)
-            ) {
-               return true;
-               // Within restricted time
-            }
-         } else {
-            // Schedule within the same day
-            if (
-               (currentHour > startHour && currentHour < endHour) ||
-               (currentHour === startHour && currentMinute >= startMinute) ||
-               (currentHour === endHour && currentMinute <= endMinute)
-            ) {
-               return true; // Within restricted time
+            while (date.isBefore(endDate) || date.isSame(endDate, "day")) {
+               const [startHour, startMinute] = schedule.start_time.split(":").map(Number);
+               const [endHour, endMinute] = schedule.end_time.split(":").map(Number);
+
+               let startDateTime = date.hour(startHour).minute(startMinute);
+               let endDateTime = date.hour(endHour).minute(endMinute);
+
+               // Handle cross-day schedules
+               if (endHour < startHour || (endHour === startHour && endMinute < startMinute)) {
+                  endDateTime = endDateTime.add(1, "day"); // Move end time to the next day
+               }
+
+               if (currentDateTime.isAfter(startDateTime) && currentDateTime.isBefore(endDateTime)) {
+                  return true; // Within restricted time
+               }
+
+               date = date.add(1, "day"); // Move to the next day
             }
          }
       }
 
       return false; // Not within any restricted schedule
+   };
+
+   const getIcon = (room: Room) => {
+      if (!room.enabled) return null;
+      if (!room.mattress_distance) return <FaChair color='orange' />;
+
+      const distanceValue = room.mattress_distance - (room.distance ? room.distance * 100 : 0);
+
+      if (distanceValue === 0 || room.distance === undefined) {
+         return <FaWalking color='red' />; // 离开图标
+      } else if (distanceValue < 30) {
+         return <FaBed color='green' />; // 卧床图标
+      } else if (distanceValue < 70) {
+         return <FaChair color='orange' />; // 坐姿图标
+      } else {
+         return <FaWalking color='red' />; // 离开图标
+      }
    };
 
    return (
@@ -117,13 +113,15 @@ const Overview: React.FC = () => {
                      >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                            <div>
-                              <h3>{room.name}</h3>
+                              <h3>
+                                 {getIcon(room)} {room.name}
+                              </h3>
                            </div>
                            <div style={{ display: "flex", alignItems: "center" }}>
                               <Tag color={getTagInfo(room).color}>{getTagInfo(room).text}</Tag> {/* Use getTagInfo */}
                               {alarms.find((item) => item.roomId === room.id) && (
                                  <BellOutlined style={{ color: "red", marginRight: "8px", fontSize: 24 }} />
-                              )}{" "}
+                              )}
                            </div>
                         </div>
                         <div

@@ -12,21 +12,6 @@ const SmsForm: React.FC<SmsFormProps> = ({}) => {
    const [form] = Form.useForm();
    const [initialValues, setInitialValues] = useState<SmsConfig>(defaultSmsConfig);
    const [showAdditionalFields, setShowAdditionalFields] = useState(initialValues.smsEnabled); // State to control visibility
-   const [availablePorts, setAvailablePorts] = useState<string[]>([]); // State to store available ports
-
-   useEffect(() => {
-      const fetchSmsConfig = async () => {
-         try {
-            const portsResponse = await axios.get(`${config.backend.url}/smsconfig/available-ports`); // 假设后端提供了 /available-ports 接口
-            setAvailablePorts(portsResponse.data);
-         } catch (error) {
-            console.error("Error listing ports:", error);
-            message.error("获取服务器端口列表失败！");
-         }
-      };
-
-      fetchSmsConfig();
-   }, []);
 
    useEffect(() => {
       const fetchSmsConfig = async () => {
@@ -40,17 +25,10 @@ const SmsForm: React.FC<SmsFormProps> = ({}) => {
                   values[key] = config.value === "true"; // Convert string to boolean for smsEnabled
                }
                // Handle numerical values
-               if (key === "smsVerificationCodeExpiry" || key === "smsBaudRate") {
-                  values[key] = parseInt(config.value, 10) || 0;
-               }
-               if (key === "smsPort") {
-                  values[key] = config.value;
-               }
-               if (key === "smsParity") {
-                  values[key] = config.value;
+               if (key === "smsVerificationCodeExpiry") {
+                  values[key] = parseInt(config.value as string, 10) || 0;
                }
             });
-            console.log("==> ~ values:", values);
             setInitialValues(values);
             form.setFieldsValue(values);
          } catch (error) {
@@ -118,62 +96,6 @@ const SmsForm: React.FC<SmsFormProps> = ({}) => {
                </Col>
             )}
          </Row>
-
-         {showAdditionalFields && (
-            <>
-               <Row gutter={16}>
-                  <Col span={12}>
-                     <Form.Item label='端口号' name='smsPort'>
-                        <Select>
-                           {availablePorts.map((portOption) => (
-                              <Select.Option key={portOption} value={portOption}>
-                                 {portOption}
-                              </Select.Option>
-                           ))}
-                        </Select>
-                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                     <Form.Item label='波特率' name='smsBaudRate'>
-                        <Select>
-                           {[115200, 9600, 4800, 2400, 1200].map((baudRate) => (
-                              <Select.Option key={baudRate} value={baudRate}>
-                                 {baudRate}
-                              </Select.Option>
-                           ))}
-                        </Select>
-                     </Form.Item>
-                  </Col>
-               </Row>
-               <Row gutter={16}>
-                  <Col span={12}>
-                     <Form.Item label='校验方式' name='smsParity'>
-                        <Select>
-                           {["NONE", "ODD", "EVEN"].map((parity) => (
-                              <Select.Option key={parity} value={parity}>
-                                 {parity}
-                              </Select.Option>
-                           ))}
-                        </Select>
-                     </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                     <Form.Item label='数据位' name='smsDataBits'>
-                        <Select disabled>
-                           <Select.Option value={8}>8</Select.Option>
-                        </Select>
-                     </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                     <Form.Item label='停止位' name='smsStopBits'>
-                        <Select disabled>
-                           <Select.Option value={1}>1</Select.Option>
-                        </Select>
-                     </Form.Item>
-                  </Col>
-               </Row>
-            </>
-         )}
          <Form.Item wrapperCol={{ span: 24 }}>
             <Button type='primary' htmlType='submit'>
                保存设置

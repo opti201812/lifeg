@@ -13,13 +13,16 @@ const RoomManagement: React.FC = () => {
    const [rooms, setRooms] = useState<Room[]>([]);
    const [isModalVisible, setIsModalVisible] = useState(false);
    const [editingRoom, setEditingRoom] = useState<Room | null>(null);
-   const [radars, setRadars] = useState<[Radar] | []>([]); // State to store radars for dropdowntions
-   const [availableRadars, setAvailableRadars] = useState<Radar[]>([]); // State to store available radar options
    const [isCheckInModalVisible, setIsCheckInModalVisible] = useState(false);
    const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
    const [availablePersonnel, setAvailablePersonnel] = useState<Personnel[]>([]);
    const [allPersonnel, setAllPersonnel] = useState<Personnel[]>([]);
    const [selectedPersonnel, setSelectedPersonnel] = useState<Personnel | null>(null);
+   const [personPose, setPersonPose] = useState(""); // 初始化人员姿态状态
+
+   const handlePersonPoseChange = (value: any) => {
+      setPersonPose(value); // 更新人员姿态状态
+   };
 
    // Fetch rooms and radars on component mount
    useEffect(() => {
@@ -38,18 +41,7 @@ const RoomManagement: React.FC = () => {
          }
       };
 
-      const fetchRadars = async () => {
-         try {
-            const response = await axios.get(`${config.backend.url}/radars`);
-            setRadars(response.data || []);
-         } catch (error) {
-            console.error("Error fetching radars:", error);
-            message.error("获取雷达列表失败！");
-         }
-      };
-
       fetchRooms();
-      fetchRadars();
    }, []);
 
    useEffect(() => {
@@ -159,10 +151,13 @@ const RoomManagement: React.FC = () => {
 
    const handleAddRoom = useCallback(
       async (room: Room) => {
-         room.mattress_distance = room.mattress_distance ? room.mattress_distance * 100 : 150; // 默认150cm
          try {
-            const response = await axios.post(`${config.backend.url}/rooms`, room);
-            setRooms([...rooms, response.data]);
+            const response = await axios.post(`${config.backend.url}/rooms`, {
+               ...room,
+               mattress_distance: room.mattress_distance ? room.mattress_distance * 100 : 150,
+            });
+            const newRoom = response.data;
+            setRooms([...rooms, { ...newRoom, mattress_distance: newRoom.mattress_distance / 100 }]);
             setIsModalVisible(false);
             message.success("新增房间成功");
          } catch (error) {
@@ -179,10 +174,17 @@ const RoomManagement: React.FC = () => {
 
    const handleEditRoom = useCallback(
       async (room: Room) => {
-         room.mattress_distance = room.mattress_distance ? room.mattress_distance * 100 : 150; // 默认150cm
          try {
-            const response = await axios.put(`${config.backend.url}/rooms/${room.id}`, room);
-            setRooms(rooms.map((r) => (r.id === room.id ? response.data : r)));
+            const response = await axios.put(`${config.backend.url}/rooms/${room.id}`, {
+               ...room,
+               mattress_distance: room.mattress_distance ? room.mattress_distance * 100 : 150,
+            });
+            const newRoom = response.data;
+            setRooms(
+               rooms.map((r) =>
+                  r.id === room.id ? { ...newRoom, mattress_distance: newRoom.mattress_distance / 100 } : r
+               )
+            );
             setIsModalVisible(false);
             message.success("更新房间信息成功");
          } catch (error) {
@@ -210,18 +212,11 @@ const RoomManagement: React.FC = () => {
       },
       [rooms]
    );
-   const showModal = useCallback(async (room: Room | null) => {
-      // Fetch available radars when opening the modal
-      try {
-         const response = await axios.get(`${config.backend.url}/rooms/available-radars`);
-         setAvailableRadars(response.data || []);
-      } catch (error) {
-         console.error("Error fetching available radars:", error);
-         message.error("获取雷达信息失败！");
-      }
 
+   const showModal = useCallback(async (room: Room | null) => {
       room ? form.setFieldsValue(room) : form.resetFields();
       setEditingRoom(room);
+      setPersonPose(room?.person_pose || "");
       setIsModalVisible(true);
    }, []);
 
@@ -244,22 +239,19 @@ const RoomManagement: React.FC = () => {
    const columns = [
       { title: "编号", dataIndex: "id", key: "id" },
       { title: "名称", dataIndex: "name", key: "name" },
-      { title: "IP地址", dataIndex: "ip", key: "ip" },
       {
          title: "雷达编号",
          dataIndex: "radar_id",
          key: "radar_id",
-         render: (radar_id: number) => {
-            const radar = radars.find((r) => r.id === radar_id);
-            return radar ? radar.name : "N/A"; // Display radar name or N/A if not found
-         },
       },
+      { title: "雷达URL", dataIndex: "ip", key: "ip" },
+      { title: "人员姿态", dataIndex: "person_pose", key: "person_pose" },
       {
          title: "床垫距离",
          dataIndex: "mattress_distance",
          key: "mattress_distance",
-         render: (mattressDistance: number | null) =>
-            mattressDistance !== null ? `${mattressDistance.toFixed(2)} 米` : "", // Convert to meters and display
+         render: (mattressDistance: number | null, record: Room) =>
+            mattressDistance !== null && record.person_pose === "卧姿" ? `${mattressDistance.toFixed(2)} 米` : "-", // Convert to meters and display
       },
       {
          title: "人员",
@@ -292,6 +284,7 @@ const RoomManagement: React.FC = () => {
          ),
       },
    ];
+
    return (
       <div style={settingSpace}>
          <h2>房间管理</h2>
@@ -317,20 +310,20 @@ const RoomManagement: React.FC = () => {
                <Form.Item label='名称' name='name' rules={[{ required: true, message: "请输入名称" }]}>
                   <Input placeholder='请输入房间号' />
                </Form.Item>
-               <Form.Item label='IP地址' name='ip' rules={[{ required: true, message: "请输入IP地址" }]}>
-                  <Input placeholder='请输入房间网络端口的IP地址' />
+               <Form.Item label='雷达编号' name='radar_id' rules={[{ required: true, message: "请输入雷达编号" }]}>
+                  <Input placeholder='请输入房间内的雷达编号' />
                </Form.Item>
-               <Form.Item label='雷达编号' name='radar_id' rules={[{ required: true, message: "请选择雷达编号" }]}>
-                  <Select placeholder='请选择房间内的雷达编号' notFoundContent='暂无可用雷达，请先添加雷达'>
-                     {availableRadars.map((radar) => (
-                        <Select.Option key={radar.id} value={radar.id}>
-                           {radar.name} {/* Display radar name in dropdown */}
-                        </Select.Option>
-                     ))}
+               <Form.Item label='雷达URL' name='ip' rules={[{ required: true, message: "请输入雷达的URL地址" }]}>
+                  <Input placeholder='请输入雷达的URL地址' />
+               </Form.Item>
+               <Form.Item label='人员姿态' name='person_pose'>
+                  <Select placeholder='请选择人员姿态' onChange={handlePersonPoseChange}>
+                     <Select.Option value='坐姿'>坐姿</Select.Option>
+                     <Select.Option value='卧姿'>卧姿</Select.Option>
                   </Select>
                </Form.Item>
                <Form.Item label='床垫距离' name='mattress_distance'>
-                  <InputNumber addonAfter={"米"} />
+                  <InputNumber addonAfter={"米"} disabled={personPose !== "卧姿"} />
                </Form.Item>
                <Form.Item label='立即启用监测' name='enabled'>
                   <Switch />
@@ -343,7 +336,6 @@ const RoomManagement: React.FC = () => {
                      确定
                   </Button>
                </Form.Item>
-               {/* ... other form items ... */}
             </Form>
          </Modal>
          <Modal title='人员进场' open={isCheckInModalVisible} onOk={handleCheckInOk} onCancel={handleCheckInCancel}>

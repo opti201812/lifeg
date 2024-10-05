@@ -14,7 +14,6 @@ import { Route, Routes, Link, Navigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import UserManagement from "./components/UserManagement";
 import AlarmDisplay from "./components/AlarmDisplay";
-import RadarManagement from "./components/RadarManagement";
 import RoomManagement from "./components/RoomManagement";
 import PersonnelManagement from "./components/PersonnelManagement/index";
 import AlarmSettings from "./components/AlarmSettings";
@@ -37,8 +36,10 @@ import {
    setRoomNetworkFailure,
    setRoomRadarFailure,
    setRoomRadarAbnormal,
+   setRooms,
 } from "./store/dataSlice";
 import config from "./config";
+import { Room } from "./types";
 
 // 在组件外部设置全局配置
 axios.defaults.withCredentials = true;
@@ -59,32 +60,26 @@ const App: React.FC = () => {
 
    const menuItems = useMemo(
       () => [
-         { key: "overview", icon: <DashboardOutlined />, label: <Link to='/overview'>总览</Link> },
-         {
-            key: "entry-exit-management",
-            icon: <TeamOutlined />,
-            label: <Link to='/entry-exit-management'>进出场管理</Link>,
-         },
+         { key: "overview", icon: <DashboardOutlined />, label: <Link to='/overview'>实时总览</Link> },
          {
             key: "history",
             icon: <HistoryOutlined />,
-            label: <Link to='/history-data'>历史数据</Link>,
+            label: <Link to='/history-data'>历史统计</Link>,
          },
-         { key: "alarm-display", icon: <AlertOutlined />, label: <Link to='/alarm-display'>报警信息</Link> },
+         { key: "alarm-display", icon: <AlertOutlined />, label: <Link to='/alarm-display'>报警分析</Link> },
+         {
+            key: "personnel-management",
+            icon: <UserOutlined />,
+            label: <Link to='/personnel-management'>人员管理</Link>,
+         },
          {
             key: "settings",
             icon: <SettingOutlined />,
-            label: "配置",
+            label: "系统配置",
             children: [
-               { key: "user-management", icon: <UserOutlined />, label: <Link to='/user-management'>用户管理</Link> },
-               { key: "radar-management", icon: <UserOutlined />, label: <Link to='/radar-management'>雷达</Link> },
-               { key: "room-management", icon: <UserOutlined />, label: <Link to='/room-management'>房间</Link> },
-               {
-                  key: "personnel-management",
-                  icon: <UserOutlined />,
-                  label: <Link to='/personnel-management'>人员信息</Link>,
-               },
-               { key: "alarm-settings", icon: <UserOutlined />, label: <Link to='/alarm-settings'>报警设置</Link> },
+               { key: "room-management", icon: <UserOutlined />, label: <Link to='/room-management'>房间配置</Link> },
+               { key: "alarm-settings", icon: <UserOutlined />, label: <Link to='/alarm-settings'>报警配置</Link> },
+               { key: "user-management", icon: <UserOutlined />, label: <Link to='/user-management'>权限管理</Link> },
             ],
          },
       ],
@@ -182,6 +177,25 @@ const App: React.FC = () => {
       };
    }, [user.role, user.room_id, dispatch]);
 
+   useEffect(() => {
+      if (!isAuthenticated) return;
+      // Fetch room data from API
+      const fetchRooms = async () => {
+         try {
+            const response = await axios.get(`${config.backend.url}/rooms`);
+            const roomsData = response.data.map((room: Room) => ({
+               ...room,
+               enabled: room.enabled as unknown,
+            }));
+            dispatch(setRooms(roomsData || [])); // Dispatch the setRooms action
+         } catch (error) {
+            console.error("Error fetching rooms:", error);
+            message.error("获取房间信息失败！");
+         }
+      };
+      fetchRooms();
+   }, [isAuthenticated]);
+
    return (
       <Layout style={{ minHeight: "100vh" }}>
          <Header
@@ -230,9 +244,9 @@ const App: React.FC = () => {
                   <Menu theme='dark' mode='inline' items={menuItems} />
                </Sider>
             )}
-            {role === "admin" && (
-               <Layout>
-                  <Content style={{ margin: "16px" }}>
+            <Layout>
+               <Content style={{ margin: "16px" }}>
+                  {role === "admin" && (
                      <Routes>
                         <Route path='/login' element={<Login />} />
                         <Route path='/overview' element={isAuthenticated ? <Overview /> : <Navigate to='/login' />} />
@@ -243,10 +257,6 @@ const App: React.FC = () => {
                         <Route
                            path='/user-management'
                            element={isAuthenticated ? <UserManagement /> : <Navigate to='/login' />}
-                        />
-                        <Route
-                           path='/radar-management'
-                           element={isAuthenticated ? <RadarManagement /> : <Navigate to='/login' />}
                         />
                         <Route
                            path='/room-management'
@@ -274,13 +284,13 @@ const App: React.FC = () => {
                         />
                         <Route path='*' element={<Navigate to={isAuthenticated ? "/overview" : "/login"} />} />
                      </Routes>
-                  </Content>
-                  <AlarmBanner /> {/* 在布局底部添加 AlarmBanner */}
-                  <Footer style={{ textAlign: "center", width: "100%", color: "rgba(0, 0, 0, 0.45)" }}>
-                     2024 浙江骊三科技有限公司 ©️版权所有
-                  </Footer>
-               </Layout>
-            )}
+                  )}
+                  {isAuthenticated && <AlarmBanner />}
+               </Content>
+               <Footer style={{ textAlign: "center", width: "100%", color: "rgba(0, 0, 0, 0.45)" }}>
+                  2024 浙江骊三科技有限公司 ©️版权所有
+               </Footer>
+            </Layout>
          </Layout>
       </Layout>
    );

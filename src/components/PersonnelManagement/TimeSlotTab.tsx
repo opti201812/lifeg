@@ -1,12 +1,44 @@
 // components/PersonnelManagement/TimeSlotTab.tsx
 
-import React, { useState, useEffect } from "react";
-import { Form, Table, Button, Space, Modal, message, DatePicker, Select } from "antd";
+import React, { useState, useEffect, forwardRef } from "react";
+import { Form, Table, Button, Space, Modal, message, Input } from "antd";
+import DatePicker, { DateObject } from "react-multi-date-picker";
+// import type { DateObject } from "react-multi-date-picker";
 import axios from "axios";
 import config from "../../config";
 import { PersonnelSchedule } from "../../types";
-import dayjs from "dayjs";
 import TimeRangePicker from "./TimeRangePicker";
+import "./styles.css";
+
+const { TextArea } = Input;
+
+const MultilineInput = React.forwardRef<HTMLTextAreaElement, React.HTMLProps<HTMLTextAreaElement>>((props, ref) => {
+   const formatDates = (value: string) => {
+      return value
+         .split(",")
+         .map((dateRange) => {
+            const [start, end] = dateRange.trim().split(" ~ ");
+            return start === end || !end ? start : `${start} ~ ${end}`;
+         })
+         .join("\n");
+   };
+
+   const datesWithNewLine = formatDates(props.value + "");
+
+   return (
+      <TextArea
+         ref={ref}
+         {...props}
+         value={datesWithNewLine}
+         className='multiline-input'
+         style={{ width: "100%", height: "auto", whiteSpace: "pre-wrap", resize: "none" }}
+         autoSize={{ minRows: 2, maxRows: 6 }}
+         // Ensure size is compatible with TextAreaProps
+         size='large' // Example value, adjust as needed
+         onResize={() => {}} // Use the correct handler
+      />
+   );
+});
 
 interface TimeSlotTabProps {
    form: any;
@@ -15,16 +47,6 @@ interface TimeSlotTabProps {
    remove: (index: number) => void;
    initialSchedules: PersonnelSchedule[];
 }
-
-const daysOfWeekOptions = [
-   { value: "1", label: "周一" },
-   { value: "2", label: "周二" },
-   { value: "3", label: "周三" },
-   { value: "4", label: "周四" },
-   { value: "5", label: "周五" },
-   { value: "6", label: "周六" },
-   { value: "7", label: "周日" },
-];
 
 const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, initialSchedules }) => {
    const [isModalVisible, setIsModalVisible] = useState(false);
@@ -51,7 +73,12 @@ const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, in
       if (schedule) {
          scheduleForm.setFieldsValue({
             timeRange: [schedule.start_time, schedule.end_time], // 直接使用字符串
-            daysOfWeek: schedule.days_of_week.split(","),
+            daysOfWeek: JSON.parse(schedule.days_of_week).map((days: any) => {
+               if (days.length === 1) {
+                  return [new DateObject(days[0])];
+               }
+               return [new DateObject(days[0]), new DateObject(days[1])];
+            }),
          });
       } else {
          scheduleForm.resetFields();
@@ -65,20 +92,34 @@ const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, in
       }
       try {
          const values = await scheduleForm.validateFields();
-
+         console.log("==> ~ values:", values);
          const scheduleData: PersonnelSchedule = {
             start_time: values.timeRange[0],
             end_time: values.timeRange[1],
-            days_of_week: values.daysOfWeek.sort((a: number, b: number) => a - b).join(","),
+            days_of_week: JSON.stringify(
+               values.daysOfWeek.map((dates: [DateObject, DateObject]) => {
+                  console.log("==> ~ dates:", dates);
+                  if (dates.length < 2) return [dates[0].format("YYYY-MM-DD")];
+
+                  return [dates[0].format("YYYY-MM-DD"), dates[1]?.format("YYYY-MM-DD")];
+               })
+            ),
          };
 
+         if (!scheduleData.start_time.includes(":")) scheduleData.start_time += ":00";
+         if (!scheduleData.end_time.includes(":")) scheduleData.end_time += ":00";
          if (selectedSchedule) {
             // Editing existing schedule
             scheduleData.id = selectedSchedule.id;
-            console.log("==> ~ scheduleData:", scheduleData, allSchedules);
             await axios.put(`${config.backend.url}/personnel/${personnelId}/schedules`, [scheduleData]);
             message.success("更新时间段成功");
 
+            console.log(
+               "==> ~ allSchedules, scheduleData, selectedSchedule.id:",
+               allSchedules,
+               scheduleData,
+               selectedSchedule.id
+            );
             // 更新 allSchedules 狀態~
             setAllSchedules(
                allSchedules.map((schedule) => (schedule.id === selectedSchedule.id ? scheduleData : schedule))
@@ -87,7 +128,6 @@ const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, in
             // Adding new schedule
             const response = await axios.post(`${config.backend.url}/personnel/${personnelId}/schedules`, scheduleData);
             const newSchedule = response.data; // Assuming backend returns the new schedule with ID
-            console.log("==> ~ newSchedule:", newSchedule);
 
             // 更新 allSchedules 狀態
             setAllSchedules([...allSchedules, newSchedule]);
@@ -101,12 +141,64 @@ const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, in
       }
    };
 
+   // const handleOk = async () => {
+   //    if (!personnelId) {
+   //       message.error("请先保存基本信息");
+   //       return;
+   //    }
+   //    try {
+   //       const values = await scheduleForm.validateFields();
+
+   //       const scheduleData: PersonnelSchedule = {
+   //          start_time: values.timeRange[0],
+   //          end_time: values.timeRange[1],
+   //          days_of_week: values.daysOfWeek.sort((a: number, b: number) => a - b).join(","),
+   //       };
+
+   //       if (selectedSchedule) {
+   //          // Editing existing schedule
+   //          scheduleData.id = selectedSchedule.id;
+   //          console.log("==> ~ scheduleData:", scheduleData, allSchedules);
+   //          await axios.put(`${config.backend.url}/personnel/${personnelId}/schedules`, [scheduleData]);
+   //          message.success("更新时间段成功");
+
+   //          // 更新 allSchedules 狀態~
+   //          setAllSchedules(
+   //             allSchedules.map((schedule) => (schedule.id === selectedSchedule.id ? scheduleData : schedule))
+   //          );
+   //       } else {
+   //          // Adding new schedule
+   //          const response = await axios.post(`${config.backend.url}/personnel/${personnelId}/schedules`, scheduleData);
+   //          const newSchedule = response.data; // Assuming backend returns the new schedule with ID
+   //          console.log("==> ~ newSchedule:", newSchedule);
+
+   //          // 更新 allSchedules 狀態
+   //          setAllSchedules([...allSchedules, newSchedule]);
+   //          message.success("新增时间段成功");
+   //       }
+
+   //       setIsModalVisible(false);
+   //    } catch (error) {
+   //       console.error("Error saving schedule:", error);
+   //       message.error("保存时间段失败");
+   //    }
+   // };
+
    const handleCancel = () => {
       setIsModalVisible(false);
    };
 
    const handleTimeRangeChange = (newTimeRange: [string, string]) => {
-      setTimeRange(newTimeRange);
+      const formattedTimeRange = newTimeRange.map((time) => {
+         // 检查时间字符串是否包含冒号
+         if (!time.includes(":")) {
+            return `${time}:00`;
+         }
+         return time;
+      }) as [string, string];
+      console.log("==> ~ formattedTimeRange:", formattedTimeRange);
+
+      setTimeRange(formattedTimeRange);
    };
 
    const confirmRemove = (record: PersonnelSchedule) => {
@@ -156,17 +248,24 @@ const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, in
          },
       },
       {
-         title: "适用于周几",
+         title: "适用日期",
          dataIndex: ["days_of_week"],
          key: "days_of_week",
          render: (text: string) => {
-            const daysOfWeek = text.split(",");
-            const dayNames = daysOfWeek.map(
-               (day) => daysOfWeekOptions.find((option) => option.value === day)?.label || ""
-            );
-            return dayNames.join("、");
+            const formattedRanges = JSON.parse(text).map((range: [string, string]) => {
+               const [start, end] = range;
+               return `${start}` + (end ? ` 至 ${end}` : "");
+            });
+            const formattedText = formattedRanges.join("，");
+
+            // Check if the formatted text exceeds 80 characters
+            if (formattedText.length > 80) {
+               return `${formattedText.substring(0, 80)}...`;
+            }
+            return formattedText;
          },
       },
+
       {
          title: "操作",
          key: "action",
@@ -178,6 +277,7 @@ const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, in
          ),
       },
    ];
+   const [dates, setDates] = useState<DateObject[][]>([[], []]);
 
    return (
       <div>
@@ -201,14 +301,16 @@ const TimeSlotTab: React.FC<TimeSlotTabProps> = ({ form, fields, add, remove, in
                >
                   <TimeRangePicker value={timeRange} onChange={handleTimeRangeChange} />
                </Form.Item>
-               <Form.Item label='适用周几' name='daysOfWeek' rules={[{ required: true, message: "请输入适用的周几" }]}>
-                  <Select mode='multiple' placeholder='请选择适用周几'>
-                     {daysOfWeekOptions.map((item) => (
-                        <Select.Option key={item.value} value={item.value}>
-                           {item.label}
-                        </Select.Option>
-                     ))}
-                  </Select>
+               <Form.Item label='适用日期' name='daysOfWeek' rules={[{ required: true, message: "请选择适用的日期" }]}>
+                  <DatePicker
+                     range
+                     multiple
+                     value={dates}
+                     onChange={setDates}
+                     format='YYYY-MM-DD'
+                     style={{ display: "block" }}
+                     render={<MultilineInput />}
+                  />
                </Form.Item>
             </Form>
          </Modal>

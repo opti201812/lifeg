@@ -1,12 +1,20 @@
 // components/PersonnelManagement/BasicInfoForm.tsx
 import React from "react";
-import { Col, Form, Input, Row, Select } from "antd";
+import { Col, Divider, Form, Input, Row, Select } from "antd";
 import { MEDICAL_HISTORIES, Personnel, Room } from "../../types";
 
 interface BasicInfoFormProps {
    form: any; // You might need to replace 'any' with the actual type of your form instance
    editingPersonnel: Personnel | null;
 }
+
+const createFormItem = (label: string, name: string[], addonAfter: string) => (
+   <Col span={6}>
+      <Form.Item label={label} name={name}>
+         <Input type='number' disabled addonAfter={addonAfter} />
+      </Form.Item>
+   </Col>
+);
 
 const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, editingPersonnel }) => {
    return (
@@ -21,8 +29,6 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, editingPersonnel })
          </Form.Item>
 
          <Row gutter={16}>
-            {" "}
-            {/* Start a new row for two-column layout */}
             <Col span={12}>
                <Form.Item
                   label='姓名'
@@ -46,8 +52,6 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, editingPersonnel })
          </Row>
 
          <Row gutter={16}>
-            {" "}
-            {/* Another row for two columns */}
             <Col span={12}>
                <Form.Item label='性别' name={["gender"]}>
                   <Select placeholder='请选择性别' allowClear>
@@ -62,17 +66,26 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, editingPersonnel })
                </Form.Item>
             </Col>
          </Row>
-         <Row gutter={16}>
+         <Row gutter={0}>
             <Col span={12}>
                <Form.Item label='职业' name={["occupation"]} rules={[{ required: false, message: "请输入职业" }]}>
                   <Input />
                </Form.Item>
             </Col>
+            <Col span={12}>
+               <Form.Item label='是否已离场' name={["is_out"]} rules={[{ required: false, message: "请选择" }]}>
+                  <Select placeholder='请选择' allowClear>
+                     <Select.Option value='false'>在场</Select.Option>
+                     <Select.Option value='true'>离场</Select.Option>
+                  </Select>
+               </Form.Item>
+            </Col>
          </Row>
+         <Divider />
          <Row gutter={16}>
             <Col span={12}>
                <Form.Item label='平均心率' name={["heart_rate"]} rules={[{ required: true, message: "请输入心率" }]}>
-                  <Input type='number' />
+                  <Input type='number' addonAfter='次/分' />
                </Form.Item>
             </Col>
             <Col span={12}>
@@ -81,11 +94,22 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, editingPersonnel })
                   name={["breath_rate"]}
                   rules={[{ required: true, message: "请输入呼吸" }]}
                >
-                  <Input type='number' />
+                  <Input type='number' addonAfter='次/分' />
                </Form.Item>
             </Col>
          </Row>
-
+         <Row gutter={16}>
+            {createFormItem("上限比", ["heartBeatRatioUpper"], "%")}
+            {createFormItem("上限值", ["heartRateUpperValue"], "次/分")}
+            {createFormItem("上限比", ["breathRatioUpper"], "%")}
+            {createFormItem("上限值", ["breathRateUpperValue"], "次/分")}
+         </Row>
+         <Row gutter={16}>
+            {createFormItem("下限比", ["heartBeatRatioLower"], "%")}
+            {createFormItem("下限值", ["heartRateLowerValue"], "次/分")}
+            {createFormItem("下限比", ["breathRatioLower"], "%")}
+            {createFormItem("下限值", ["breathRateLowerValue"], "次/分")}
+         </Row>
          <Row gutter={16}>
             <Col span={12}>
                <Form.Item name={["medical_history"]} label='病史' rules={[{ required: true, message: "请选择病史" }]}>
@@ -103,7 +127,7 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, editingPersonnel })
                </Form.Item>
             </Col>
             <Col span={12}>
-               <Form.Item name={["remark"]} label='备注' rules={[{ required: false, message: "请输入备注" }]}>
+               <Form.Item name={["remark"]} label='其它病史' rules={[{ required: false, message: "请输入备注" }]}>
                   <Input.TextArea rows={2} />
                </Form.Item>
             </Col>

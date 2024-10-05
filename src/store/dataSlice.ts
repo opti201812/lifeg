@@ -28,9 +28,9 @@ const dataSlice = createSlice({
             state.rooms[roomIndex] = {
                ...state.rooms[roomIndex],
                ...data,
-               networkFailure: false,
-               radarFailure: false,
-               radarAbnormal: false,
+               // networkFailure: false,
+               // radarFailure: false,
+               // radarAbnormal: false,
             };
          }
       },

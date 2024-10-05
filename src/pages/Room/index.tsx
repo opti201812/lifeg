@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Carousel, Card, Row, Col, message, Button } from "antd";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import DailyDataSlide from "./DailyDataSlide";
 import WeeklyDataSlide from "./WeeklyDataSlide";
 import MonitoringControlSlide from "./MonitoringControlSlide";
@@ -10,6 +10,7 @@ import axios from "axios";
 import config from "../../config/index";
 import { RootState } from "../../store/index.js";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons"; // 引入手動切換按鈕的圖標
+import { updateRoomData } from "../../store/dataSlice";
 
 interface User {
    id: number;
@@ -68,9 +69,12 @@ const RoomPage: React.FC<PropsWithRoomId> = ({ roomId }) => {
 
       fetchData();
    }, [roomId]);
+
    const handleMonitoringStatusChange = (enabled: boolean) => {
       setIsMonitoringEnabled(enabled);
    };
+
+   const dispath = useDispatch();
 
    return (
       <div
@@ -86,15 +90,27 @@ const RoomPage: React.FC<PropsWithRoomId> = ({ roomId }) => {
                roomId={roomId}
                roomInfo={roomInfo}
                isMonitoringEnabled={isMonitoringEnabled || false}
-               setIsMonitoringEnabled={setIsMonitoringEnabled}
+               setIsMonitoringEnabled={(value) => {
+                  setIsMonitoringEnabled(value);
+                  // 更新redux
+                  if (roomData) {
+                     dispath(
+                        updateRoomData({
+                           roomId: roomData.id,
+                           data: {
+                              ...roomData,
+                              enabled: value,
+                           },
+                        })
+                     );
+                  }
+               }}
                onMonitoringStatusChange={handleMonitoringStatusChange}
             />
             <DailyDataSlide roomInfo={roomInfo} isMonitoringEnabled={isMonitoringEnabled || false} />
             <WeeklyDataSlide roomInfo={roomInfo} isMonitoringEnabled={isMonitoringEnabled || false} />
          </Carousel>
          <div style={{ marginTop: "10px", textAlign: "center" }}>
-            {" "}
-            {/* 添加手動切換按鈕 */}
             <Button
                icon={<LeftOutlined />}
                onClick={() => carouselRef.current?.prev()}
