@@ -13,20 +13,25 @@ import axios from "axios";
 import config from "../../config";
 
 interface WeeklyDataSlideProps {
-   roomInfo: { name: string; age: number; gender: string; roomId: number; personnelId: number };
-   isMonitoringEnabled: boolean;
+   roomInfo: { name: string; age: number; gender: string; roomId: number; personnelId?: number | null };
+   roomId: number;
 }
 
-const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo, isMonitoringEnabled }) => {
+const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo }) => {
    const [dataDistance, setDataDistance] = React.useState<DataPoint[]>([]);
    const [dataHeartBeat, setDataHeartBeat] = React.useState<DataPoint[]>([]);
    const [dataBreathRate, setDataBreathRate] = React.useState<DataPoint[]>([]);
+   const [dataEnvironment, setDataEnvironment] = React.useState<DataPoint[]>([]);
    const roomData = useSelector((state: RootState) => state.data.rooms.find((room) => room.id === roomInfo.roomId)); // Get room data from Redux store
    const sevenDaysAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD HH:mm:ss");
 
    useEffect(() => {
-      if (!isMonitoringEnabled) return;
       const fetchHistoricalData = async () => {
+         if (!roomInfo?.personnelId) {
+            console.log("No personnelId found for this room.");
+            return;
+         }
+
          try {
             const queryParams = new URLSearchParams({
                personnelId: roomInfo.personnelId.toString(),
@@ -34,7 +39,11 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo, isMonitorin
                endDate: dayjs().format("YYYY-MM-DD HH:mm:ss"),
             });
 
-            const response = await axios.get(`${config.backend.url}/history?${queryParams.toString()}`);
+            const response = await axios.get(`${config.backend.url}/history?${queryParams.toString()}`, {
+               headers: {
+                  "Cache-Control": "no-cache",
+               },
+            });
             response.data.sort((a: any, b: any) => {
                const dateA = new Date(a.time);
                const dateB = new Date(b.time);
@@ -50,6 +59,10 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo, isMonitorin
             setDataBreathRate(
                response.data.map((item: any) => ({ date: new Date(item.time).getTime(), value: item.breath_rate }))
             );
+            setDataEnvironment(
+               response.data.map((item: any) => ({ date: new Date(item.time).getTime(), value: item.environment }))
+            );
+            console.log("Refreshed weekly data");
          } catch (error) {
             console.error("Error fetching historical data:", error);
             message.error("获取历史数据失败！");
@@ -57,15 +70,22 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo, isMonitorin
       };
 
       fetchHistoricalData();
-      const intervalId = setInterval(fetchHistoricalData, 5 * 60 * 1000); // 60 seconds * 1000 milliseconds
+      const intervalId = setInterval(fetchHistoricalData, 30 * 1000); // 60 seconds * 1000 milliseconds
 
       return () => clearInterval(intervalId);
-   }, [roomInfo.roomId, isMonitoringEnabled]); // Re-fetch when roomId changes
+   }, [roomInfo.roomId, roomInfo.personnelId]); // Re-fetch when roomId changes
 
    const getLineOptions = (data: DataPoint[], seriesName: string) => {
       return {
          xAxis: {
             type: "time",
+            axisLabel: {
+               rotate: 45,
+               formatter: (value: string | number | Date) => {
+                  const date = dayjs(value);
+                  return date.format("MM/DD HH:mm");
+               },
+            },
          },
          yAxis: {
             type: "value",
@@ -89,9 +109,13 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo, isMonitorin
    };
 
    return (
-      <Card title={<RoomInfo roomName={roomInfo.name} age={roomInfo.age} gender={roomInfo.gender} type='周' />}>
+      <Card
+         title={
+            <RoomInfo roomName={roomInfo.name} age={roomInfo.age} gender={roomInfo.gender} room={roomData} type='周' />
+         }
+      >
          <Row gutter={16}>
-            <Col span={8}>
+            <Col span={6}>
                <Card title={<div style={{ textAlign: "center" }}>距离</div>}>
                   <div style={{ textAlign: "center" }}>
                      <p>{roomData?.distance} m</p>
@@ -99,7 +123,7 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo, isMonitorin
                   </div>
                </Card>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
                <Card title={<div style={{ textAlign: "center" }}>心跳</div>}>
                   <div style={{ textAlign: "center" }}>
                      <p>{roomData?.heartRate} 次/分</p>
@@ -107,7 +131,7 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo, isMonitorin
                   </div>
                </Card>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
                <Card title={<div style={{ textAlign: "center" }}>呼吸</div>}>
                   <div style={{ textAlign: "center" }}>
                      <p>{roomData?.breathRate} 次/分</p>
@@ -115,10 +139,18 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo, isMonitorin
                   </div>
                </Card>
             </Col>
+            <Col span={6}>
+               <Card title={<div style={{ textAlign: "center" }}>环境干扰</div>}>
+                  <div style={{ textAlign: "center" }}>
+                     <p>{roomData?.environment || "-"}</p>
+                     <ReactECharts option={getLineOptions(dataEnvironment, "环境干扰")} style={{ height: 250 }} />
+                  </div>
+               </Card>
+            </Col>
          </Row>
          <RoomInfoFoot
             lastUpdate={roomData?.time ? new Date(roomData?.time).toLocaleString() : ""}
-            onDisarmClick={() => {}}
+            pose={roomData?.person_pose || ""}
          />
       </Card>
    );

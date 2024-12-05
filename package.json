@@ -4,11 +4,11 @@
   "description": "A Life Guard application with user management, permission management, and alarm display features.",
   "main": "src/index.tsx",
   "scripts": {
-    "start": "react-scripts start",
-    "build:dev": "react-scripts build",
+    "start": "REACT_APP_BACKEND_URL=http://localhost:3030/api react-scripts start",
+    "build:dev": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/client/build' react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "build:prod": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/client/build'  REACT_APP_BACKEND_URL=http://192.168.3.88:3030/api react-scripts build"
+    "build:prod": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/client/build' react-scripts build"
   },
   "keywords": [],
   "author": "",
@@ -38,7 +38,7 @@
   },
   "resolve": {
     "fallback": {
-      "crypto": "node_modules/crypto-browserify",
+      "crypto": false,
       "path": "node_modules/path-browserify"
     }
   },

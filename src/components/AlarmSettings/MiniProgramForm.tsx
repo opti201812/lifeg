@@ -27,8 +27,8 @@ const MiniProgramForm: React.FC<MiniProgramFormProps> = ({ initialValues }) => {
             response.data.forEach((config: AlertConfig) => {
                const key = config.config_name as keyof MiniConfig; // Use keyof to ensure type safety
                if (key === "wechatEnabled") {
-                  values[key] = config.value as boolean; // Convert string to boolean for wechatEnabled
-                  setShowAdditionalFields(config.value as boolean); // Set showAdditionalFields state based on wechatEnabled
+                  values[key] = config.value === "true" || config.value === true; // Convert string to boolean for wechatEnabled
+                  setShowAdditionalFields(values[key]); // Set showAdditionalFields state based on wechatEnabled
                }
                // Handle numerical values
                if (key === "wechatOpenIdList") {

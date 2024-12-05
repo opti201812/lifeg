@@ -142,6 +142,8 @@ const AlarmDisplay: React.FC = () => {
          心率: item.heart_rate,
          呼吸频率: item.breath_rate,
          距离: item.distance,
+         体位: item.pose,
+         环境: item.environment,
          报警等级: item.alarm_level,
          处理时间: item.handling_time,
          处理方式: item.handling_method,
@@ -176,6 +178,8 @@ const AlarmDisplay: React.FC = () => {
             return text ? (parseInt(text) / 100).toFixed(2) : "";
          },
       },
+      { title: "体位", dataIndex: "pose", key: "pose" },
+      { title: "环境干扰", dataIndex: "environment", key: "environment" },
       {
          title: "告警级别",
          dataIndex: "alarm_level",

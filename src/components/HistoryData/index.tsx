@@ -128,6 +128,7 @@ const HistoryData: React.FC = () => {
             u60heartRateMax,
             u60heartRateMin,
             target_distance,
+            pose,
             targetDistanceMax,
             targetDistanceMin,
             environment,
@@ -139,6 +140,8 @@ const HistoryData: React.FC = () => {
             心率: heart_rate,
             呼吸: breath_rate,
             距离: target_distance,
+            体位: pose,
+            环境: environment,
             日期时间: time,
          };
       });
@@ -173,7 +176,10 @@ const HistoryData: React.FC = () => {
          render: (text: string, record: any) => {
             return (parseInt(text) / 100).toFixed(2);
          },
-      }, // Assuming 'distance' is 'target_distance' in the API response
+      },
+      { title: "体位", dataIndex: "pose", key: "pose" },
+      { title: "环境干扰", dataIndex: "environment", key: "environment" },
+      // Assuming 'distance' is 'target_distance' in the API response
       // {
       //    title: "是否告警",
       //    dataIndex: "is_alarm", // Assuming 'isAlarm' is 'is_alarm' in the API response

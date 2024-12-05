@@ -1,11 +1,12 @@
 // components/UserManagement/index.tsx
 import React, { useState, useCallback, useEffect } from "react";
-import { Table, Button, Modal, Form, Input, Select, message } from "antd";
+import { Table, Button, Modal, Form, Input, Select, message, Divider, Tabs } from "antd";
 import { settingSpace } from "../../styles/theme";
 import axios from "axios";
 import config from "../../config";
-import { Room, User } from "../../types";
+import { defaultRoomAuthConfig, defaultSmsConfig, Room, User } from "../../types";
 import { ExclamationCircleOutlined } from "@ant-design/icons"; // Import the icon
+import SmsForm from "./SmsForm";
 
 const UserManagement: React.FC = () => {
    const [form] = Form.useForm();
@@ -133,7 +134,15 @@ const UserManagement: React.FC = () => {
       { title: "姓名", dataIndex: "name", key: "name" },
       { title: "账号/手机号", dataIndex: "account", key: "account" },
       { title: "权限", dataIndex: "role", key: "role" },
-      { title: "房间号", dataIndex: "room_id", key: "room_id" },
+      {
+         title: "房间号",
+         dataIndex: "room_id",
+         key: "room_id",
+         render: (text: any) => {
+            const room = rooms.find((room) => room.id === text);
+            return room ? room.name : "-";
+         },
+      },
       {
          title: "操作",
          key: "action",
@@ -147,112 +156,136 @@ const UserManagement: React.FC = () => {
          ),
       },
    ];
+   const UserForm = () => {
+      return (
+         <>
+            <Button type='primary' onClick={() => showModal(null)}>
+               新增账户
+            </Button>
+            <Table dataSource={users} columns={columns} rowKey='id' />
+            <Modal
+               title={editingUser ? "编辑账户" : "新增账户"}
+               open={isModalVisible}
+               onCancel={handleCancel}
+               footer={null}
+            >
+               <Form
+                  form={form}
+                  // initialValues={editingUser || { id: "", name: "", account: "", password: "", role: "", room_id: "" }}
+                  onFinish={handleOk}
+                  onFinishFailed={(errorInfo) => {
+                     console.log("Failed:", errorInfo);
+                  }}
+               >
+                  <Form.Item
+                     label='编号'
+                     name='id'
+                     rules={[{ required: false, message: "请输入编号" }]}
+                     style={{ display: "none" }}
+                  >
+                     <Input />
+                  </Form.Item>
+                  <Form.Item label='姓名' name='name' rules={[{ required: true, message: "请输入姓名" }]}>
+                     <Input autoComplete='off' />
+                  </Form.Item>
+                  <Form.Item
+                     label='账号/手机号'
+                     name='account'
+                     rules={[
+                        { required: true, message: "请输入手机号" },
+                        {
+                           pattern: /^1\d{10}$/,
+                           message: "请输入以11位数字手机号",
+                        },
+                     ]}
+                  >
+                     <Input autoComplete='off' />
+                  </Form.Item>
+                  {!editingUser && (
+                     <>
+                        <Form.Item label='密码' name='password' rules={[{ required: true, message: "请输入密码" }]}>
+                           <Input.Password autoComplete='off' />
+                        </Form.Item>
+                        <Form.Item
+                           label='重复密码'
+                           name='confirmPassword'
+                           dependencies={["password"]}
+                           rules={[
+                              { required: true, message: "请再次输入密码" },
+                              ({ getFieldValue }) => ({
+                                 validator(_, value) {
+                                    if (!value || getFieldValue("password") === value) {
+                                       return Promise.resolve();
+                                    }
+                                    return Promise.reject(new Error("两次输入的密码不一致"));
+                                 },
+                              }),
+                           ]}
+                        >
+                           <Input.Password autoComplete='off' />
+                        </Form.Item>
+                     </>
+                  )}
+                  <Form.Item
+                     initialValue={"user"}
+                     label='权限'
+                     name='role'
+                     rules={[{ required: true, message: "请输入权限" }]}
+                  >
+                     <Select>
+                        {/* <Select.Option value='admin'>管理员</Select.Option> */}
+                        <Select.Option value='user'>用户</Select.Option>
+                     </Select>
+                  </Form.Item>
+                  <Form.Item
+                     label='房间号'
+                     name='room_id'
+                     rules={[{ required: !editingUser?.role || editingUser?.role === "user", message: "请选择房间号" }]} // Required only for users
+                  >
+                     <Select
+                        allowClear // Allow clearing the selection
+                        placeholder='请选择房间号'
+                        disabled={editingUser?.role === "admin"} // Disable for admin users
+                     >
+                        {rooms.map((room) => (
+                           <Select.Option key={room.id} value={room.id}>
+                              {room.name}
+                           </Select.Option>
+                        ))}
+                     </Select>
+                  </Form.Item>{" "}
+                  <Form.Item>
+                     <Button type='primary' htmlType='submit'>
+                        确定
+                     </Button>
+                  </Form.Item>
+               </Form>
+            </Modal>
+         </>
+      );
+   };
+   const items = [
+      {
+         key: "1",
+         label: `管理员`,
+         children: <UserForm />,
+      },
+      {
+         key: "2",
+         label: "短信设置",
+         children: <SmsForm initialValues={defaultSmsConfig} />,
+      },
+   ];
+   const [activeTabKey, setActiveTabKey] = useState("1");
+
+   const handleTabChange = (key: string) => {
+      setActiveTabKey(key);
+   };
 
    return (
       <div style={settingSpace}>
-         <h2>账户管理</h2>
-         <Button type='primary' onClick={() => showModal(null)}>
-            新增账户
-         </Button>
-         <Table dataSource={users} columns={columns} rowKey='id' />
-         <Modal
-            title={editingUser ? "编辑账户" : "新增账户"}
-            open={isModalVisible}
-            onCancel={handleCancel}
-            footer={null}
-         >
-            <Form
-               form={form}
-               // initialValues={editingUser || { id: "", name: "", account: "", password: "", role: "", room_id: "" }}
-               onFinish={handleOk}
-               onFinishFailed={(errorInfo) => {
-                  console.log("Failed:", errorInfo);
-               }}
-            >
-               <Form.Item
-                  label='编号'
-                  name='id'
-                  rules={[{ required: false, message: "请输入编号" }]}
-                  style={{ display: "none" }}
-               >
-                  <Input />
-               </Form.Item>
-               <Form.Item label='姓名' name='name' rules={[{ required: true, message: "请输入姓名" }]}>
-                  <Input autoComplete='off' />
-               </Form.Item>
-               <Form.Item
-                  label='账号/手机号'
-                  name='account'
-                  rules={[
-                     { required: true, message: "请输入手机号" },
-                     {
-                        pattern: /^1\d{10}$/,
-                        message: "请输入以11位数字手机号",
-                     },
-                  ]}
-               >
-                  <Input autoComplete='off' />
-               </Form.Item>
-               {!editingUser && (
-                  <>
-                     <Form.Item label='密码' name='password' rules={[{ required: true, message: "请输入密码" }]}>
-                        <Input.Password autoComplete='off' />
-                     </Form.Item>
-                     <Form.Item
-                        label='重复密码'
-                        name='confirmPassword'
-                        dependencies={["password"]}
-                        rules={[
-                           { required: true, message: "请再次输入密码" },
-                           ({ getFieldValue }) => ({
-                              validator(_, value) {
-                                 if (!value || getFieldValue("password") === value) {
-                                    return Promise.resolve();
-                                 }
-                                 return Promise.reject(new Error("两次输入的密码不一致"));
-                              },
-                           }),
-                        ]}
-                     >
-                        <Input.Password autoComplete='off' />
-                     </Form.Item>
-                  </>
-               )}
-               <Form.Item
-                  initialValue={"user"}
-                  label='权限'
-                  name='role'
-                  rules={[{ required: true, message: "请输入权限" }]}
-               >
-                  <Select>
-                     {/* <Select.Option value='admin'>管理员</Select.Option> */}
-                     <Select.Option value='user'>用户</Select.Option>
-                  </Select>
-               </Form.Item>
-               <Form.Item
-                  label='房间号'
-                  name='room_id'
-                  rules={[{ required: !editingUser?.role || editingUser?.role === "user", message: "请选择房间号" }]} // Required only for users
-               >
-                  <Select
-                     allowClear // Allow clearing the selection
-                     placeholder='请选择房间号'
-                     disabled={editingUser?.role === "admin"} // Disable for admin users
-                  >
-                     {rooms.map((room) => (
-                        <Select.Option key={room.id} value={room.id}>
-                           {room.name}
-                        </Select.Option>
-                     ))}
-                  </Select>
-               </Form.Item>{" "}
-               <Form.Item>
-                  <Button type='primary' htmlType='submit'>
-                     确定
-                  </Button>
-               </Form.Item>
-            </Form>
-         </Modal>
+         <h2>权限管理</h2>
+         <Tabs activeKey={activeTabKey} onChange={handleTabChange} items={items} />
       </div>
    );
 };

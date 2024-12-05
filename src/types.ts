@@ -41,6 +41,7 @@ export interface Room {
    enabled: boolean;
    remark: string;
    personnel_id?: number | null; // Add the personnel_id field (optional)
+   personnelName?: string; // Add the personnelName field (optional)
    alarm?: boolean;
    heartRate?: number;
    breathRate?: number;
@@ -53,6 +54,8 @@ export interface Room {
    radarFailure?: boolean; // Add radarFailure (optional)
    radarAbnormal?: boolean; // Add radar  (optional)
    person_pose?: string; // Add person_pose (optional)
+   environment?: number; // Add environment (optional)
+   createTimeStamp?: number; // Add createTimeStamp (optional)
 }
 
 export interface User {
@@ -147,3 +150,11 @@ export interface HistoricalData {
    create_date: string; // Assuming ISO 8601 format
    update_date: string; // Assuming ISO 8601 format
 }
+
+export interface RoomAuthConfig {
+   roomAuthEnabled: boolean;
+}
+
+export const defaultRoomAuthConfig: RoomAuthConfig = {
+   roomAuthEnabled: false,
+};

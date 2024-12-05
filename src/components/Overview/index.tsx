@@ -1,41 +1,60 @@
 // components/Overview/index.tsx
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, Row, Col, Button, Tag, Typography, message } from "antd";
 import { HeartOutlined, BellOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "./Overview.css";
 import RoomPage from "../../pages/Room";
 import { useDispatch, useSelector } from "react-redux";
-import { MEDICAL_HISTORIES, Room, User } from "../../types";
+import { AlertConfig, MEDICAL_HISTORIES, Room, User } from "../../types";
 import { RootState } from "../../store";
 import { FaBed, FaChair, FaWalking } from "react-icons/fa"; // 使用react-icons库
+import axios from "axios";
+import config from "../../config";
+import { setRooms } from "../../store/dataSlice";
 
 const Overview: React.FC = () => {
    const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
+   const [showPersonnelName, setShowPersonnelName] = useState(false);
    const rooms = useSelector((state: RootState) => state.data.rooms); // Get rooms from Redux store
    const alarms = useSelector((state: RootState) => state.data.alarms); // Get alarms from Redux store
+   const dispatch = useDispatch();
 
-   const getTagInfo = (room: Room) => {
-      if (!room.personnel_id) {
-         return { text: "无人", color: "gray" };
-      } else if (!room.enabled) {
-         return { text: "未设防", color: "red" };
-      } else if (isInRestrictedSchedule(room)) {
-         return { text: "搁置时段", color: "orange" };
-      } else if (room.networkFailure) {
-         return { text: "网络故障", color: "red" };
-      } else if (room.radarFailure) {
-         return { text: "雷达故障", color: "red" };
-      } else if (room.radarAbnormal) {
-         return { text: "雷达异常", color: "red" };
-      } else {
-         return { text: "采集中", color: "green" };
-      }
-   };
+   useEffect(() => {
+      // Fetch SMS config on component mount
+      axios
+         .get(`${config.backend.url}/smsconfig`)
+         .then((res) => {
+            const isPersonNameVisibleConfig = res.data.find(
+               (config: AlertConfig) => config.config_name === "isPersonNameVisible"
+            );
+            setShowPersonnelName(
+               isPersonNameVisibleConfig?.value === "true" || isPersonNameVisibleConfig?.value === true
+            ); // Show if enabled
+         })
+         .catch((err) => {
+            console.error("Error fetching SMS config:", err);
+         });
+      const fetchRooms = async () => {
+         try {
+            const response = await axios.get(`${config.backend.url}/rooms`);
+            const roomsData = response.data.map((room: Room) => ({
+               ...room,
+               enabled: room.enabled,
+            }));
+            dispatch(setRooms(roomsData || [])); // Dispatch the setRooms action
+         } catch (error) {
+            console.error("Error fetching rooms:", error);
+            message.error("获取房间信息失败！");
+         }
+      };
+
+      if (!selectedRoomId) fetchRooms();
+   }, [selectedRoomId]);
 
    // Function to check if current time is within restricted schedule
-   const isInRestrictedSchedule = (room: Room) => {
+   const isInRestrictedSchedule = useCallback((room: Room) => {
       if (!room.personnel_id || !room.schedules || room.schedules.length === 0) {
          return false; // No personnel or schedules, not restricted
       }
@@ -78,30 +97,52 @@ const Overview: React.FC = () => {
       }
 
       return false; // Not within any restricted schedule
-   };
+   }, []);
 
-   const getIcon = (room: Room) => {
+   const getTagInfo = useCallback(
+      (room: Room) => {
+         if (!room.personnel_id) {
+            return { text: "无人", color: "gray" };
+         } else if (!room.enabled) {
+            return { text: "未设防", color: "red" };
+         } else if (isInRestrictedSchedule(room)) {
+            return { text: "搁置时段", color: "orange" };
+         } else if (room.networkFailure) {
+            return { text: "网络故障", color: "red" };
+         } else if (room.radarFailure) {
+            return { text: "雷达故障", color: "red" };
+         } else if (room.radarAbnormal) {
+            return { text: "雷达异常", color: "red" };
+         } else {
+            return { text: "采集中", color: "green" };
+         }
+      },
+      [isInRestrictedSchedule]
+   );
+
+   const getIcon = useCallback((room: Room) => {
+      const iconSize = 24;
       if (!room.enabled) return null;
-      if (!room.mattress_distance) return <FaChair color='orange' />;
+      if (room.person_pose === "坐姿" || !room.mattress_distance) return <FaChair color='orange' />;
 
       const distanceValue = room.mattress_distance - (room.distance ? room.distance * 100 : 0);
 
       if (distanceValue === 0 || room.distance === undefined) {
-         return <FaWalking color='red' />; // 离开图标
+         return <FaWalking color='red' style={{ fontSize: iconSize + "px" }} />; // 离开图标
       } else if (distanceValue < 30) {
-         return <FaBed color='green' />; // 卧床图标
+         return <FaBed color='green' style={{ fontSize: iconSize + "px" }} />; // 卧床图标
       } else if (distanceValue < 70) {
-         return <FaChair color='orange' />; // 坐姿图标
+         return <FaChair color='orange' style={{ fontSize: iconSize + "px" }} />; // 坐姿图标
       } else {
-         return <FaWalking color='red' />; // 离开图标
+         return <FaWalking color='red' style={{ fontSize: iconSize + "px" }} />; // 离开图标
       }
-   };
+   }, []);
 
    return (
       <div>
          <h2>总览</h2>
          {selectedRoomId ? (
-            <RoomPage roomId={selectedRoomId} gender='' age={0} />
+            <RoomPage roomId={selectedRoomId} />
          ) : (
             <Row gutter={[16, 32]} justify='center' align='middle'>
                {rooms?.map((room) => (
@@ -109,16 +150,14 @@ const Overview: React.FC = () => {
                      <Card
                         bordered={false}
                         onClick={() => setSelectedRoomId(room.id)}
-                        className={alarms.find((item) => item.roomId === room.id) ? "alarm-card" : ""}
+                        className={alarms.find((item) => item.roomId === room.id && item.level < 3) ? "alarm-card" : ""}
                      >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                            <div>
-                              <h3>
-                                 {getIcon(room)} {room.name}
-                              </h3>
+                              <h3>{room.name}</h3>
                            </div>
                            <div style={{ display: "flex", alignItems: "center" }}>
-                              <Tag color={getTagInfo(room).color}>{getTagInfo(room).text}</Tag> {/* Use getTagInfo */}
+                              <Tag color={getTagInfo(room).color}>{getTagInfo(room).text}</Tag>
                               {alarms.find((item) => item.roomId === room.id) && (
                                  <BellOutlined style={{ color: "red", marginRight: "8px", fontSize: 24 }} />
                               )}
@@ -128,20 +167,24 @@ const Overview: React.FC = () => {
                            style={{
                               display: "flex",
                               justifyContent: "space-between",
-                              alignItems: "center",
-                              marginTop: 16,
+                              alignItems: "flex-start",
+                              marginTop: 8,
                            }}
                         >
-                           <div>
-                              <Typography.Title level={4} style={{ margin: 0 }}>
-                                 {room.personnel_name
-                                    ? // Display personnel name (masked) if personnel_id exists
-                                      room.personnel_name.charAt(0) + "*".repeat(room.personnel_name.length - 1 || 0)
-                                    : ""}
-                              </Typography.Title>
-                           </div>
+                           <Row style={{ width: "100%" }}>
+                              <Col span={4}>{getIcon(room)}</Col>
+                              <Col span={20}>
+                                 {showPersonnelName && (
+                                    <Typography.Title level={4} style={{ margin: 0 }}>
+                                       {room.personnelName
+                                          ? room.personnelName.toString().charAt(0) +
+                                            "*".repeat(room.personnelName.length - 1 || 0)
+                                          : ""}
+                                    </Typography.Title>
+                                 )}
+                              </Col>
+                           </Row>
                            <div style={{ display: "flex", flexDirection: "column" }}>
-                              {/* Add flexDirection: "column" */}
                               <Button type='link' style={{ padding: 0 }}>
                                  日曲线
                               </Button>
@@ -151,32 +194,48 @@ const Overview: React.FC = () => {
                            </div>
                         </div>
                         <Row gutter={16} style={{ marginTop: 16 }}>
-                           <Col span={8}>
-                              {" "}
-                              {/* Each Col takes 1/3 of the row (24 / 3 = 8) */}
+                           <Col span={6}>
                               <div style={{ textAlign: "center" }}>
                                  <HeartOutlined style={{ fontSize: 27, color: "red" }} />
-                                 <p style={{ fontSize: 16, fontWeight: "bold", margin: 0 }}>{room.heartRate} 次</p>
+                                 <p style={{ fontSize: 12, fontWeight: "bold", margin: 0 }}>
+                                    {room.environment ? room.heartRate : "-"} 次
+                                 </p>
                               </div>
                            </Col>
-                           <Col span={8}>
+                           <Col span={6}>
                               <div style={{ textAlign: "center" }}>
                                  <img
                                     src={"/images/ll.png"}
                                     alt='Breath Rate Icon'
                                     style={{ width: 24, height: 24, color: "blue" }}
                                  />
-                                 <p style={{ fontSize: 16, fontWeight: "bold", margin: 0 }}>{room.breathRate} 次</p>
+                                 <p style={{ fontSize: 12, fontWeight: "bold", margin: 0 }}>
+                                    {room.environment ? room.breathRate : "-"} 次
+                                 </p>
                               </div>
                            </Col>
-                           <Col span={8}>
+                           <Col span={6}>
                               <div style={{ textAlign: "center" }}>
                                  <img
                                     src={"/images/radar2.png"}
                                     alt='Radar Icon'
                                     style={{ width: 24, height: 24, color: "blue" }}
                                  />
-                                 <p style={{ fontSize: 16, fontWeight: "bold", margin: 0 }}>{room.distance} 米</p>
+                                 <p style={{ fontSize: 12, fontWeight: "bold", margin: 0 }}>
+                                    {room.environment ? room.distance : "-"}米
+                                 </p>
+                              </div>
+                           </Col>
+                           <Col span={6}>
+                              <div style={{ textAlign: "center" }}>
+                                 <img
+                                    src={"/images/radarzzz.png"}
+                                    alt='Disturbance Icon'
+                                    style={{ width: 24, height: 24, color: "orange" }}
+                                 />
+                                 <p style={{ fontSize: 12, fontWeight: "bold", margin: 0 }}>
+                                    {room.environment || "-"}
+                                 </p>
                               </div>
                            </Col>
                         </Row>

@@ -55,7 +55,13 @@ const SmsForm: React.FC<SmsFormProps> = ({}) => {
          }
 
          await axios.put(`${config.backend.url}/smsconfig`, updatedValues);
-         message.success("SMS settings saved successfully");
+         message.success(
+            <p style={{ textAlign: "left", margin: 0 }}>
+               保存短信设置成功！
+               <br />
+               注意：须重启服务端以使更改生效
+            </p>
+         );
       } catch (err) {
          console.error("Error saving SMS settings:", err);
          if (axios.isAxiosError(err)) {

@@ -1,16 +1,18 @@
 // components/RoomManagement/index.tsx
 
 import React, { useState, useCallback, useEffect } from "react";
-import { Table, Button, Modal, Form, Input, Switch, message, Select, InputNumber } from "antd";
-import { ExclamationCircleOutlined } from "@ant-design/icons";
+import { Table, Button, Modal, Form, Input, Switch, message, Select, InputNumber, Tooltip } from "antd";
 import { settingSpace } from "../../styles/theme";
 import { Personnel, Radar, Room } from "../../types";
 import axios from "axios";
 import config from "../../config";
+import { useDispatch, useSelector } from "react-redux";
+import { setRooms } from "../../store/dataSlice";
+import { RootState } from "../../store";
 
 const RoomManagement: React.FC = () => {
    const [form] = Form.useForm();
-   const [rooms, setRooms] = useState<Room[]>([]);
+   const rooms = useSelector((state: RootState) => state.data.rooms);
    const [isModalVisible, setIsModalVisible] = useState(false);
    const [editingRoom, setEditingRoom] = useState<Room | null>(null);
    const [isCheckInModalVisible, setIsCheckInModalVisible] = useState(false);
@@ -18,7 +20,8 @@ const RoomManagement: React.FC = () => {
    const [availablePersonnel, setAvailablePersonnel] = useState<Personnel[]>([]);
    const [allPersonnel, setAllPersonnel] = useState<Personnel[]>([]);
    const [selectedPersonnel, setSelectedPersonnel] = useState<Personnel | null>(null);
-   const [personPose, setPersonPose] = useState(""); // 初始化人员姿态状态
+   const [personPose, setPersonPose] = useState("卧姿"); // 初始化人员姿态状态
+   const dispatch = useDispatch();
 
    const handlePersonPoseChange = (value: any) => {
       setPersonPose(value); // 更新人员姿态状态
@@ -32,9 +35,8 @@ const RoomManagement: React.FC = () => {
             const roomsData = response.data.map((room: Room) => ({
                ...room,
                mattress_distance: room.mattress_distance !== undefined && room.mattress_distance / 100,
-               enabled: (room.enabled as unknown) === 1,
             }));
-            setRooms(roomsData || []);
+            dispatch(setRooms(roomsData || []));
          } catch (error) {
             console.error("Error fetching rooms:", error);
             message.error("获取房间列表失败！");
@@ -84,34 +86,6 @@ const RoomManagement: React.FC = () => {
       fetchAvailablePersonnel();
    }, []);
 
-   const handleCheckIn = useCallback((room: Room) => {
-      setSelectedRoom(room);
-      setIsCheckInModalVisible(true);
-   }, []);
-
-   const handleCheckOut = useCallback(async (roomId: number) => {
-      // Confirmation dialog
-      Modal.confirm({
-         title: "确认退场",
-         icon: <ExclamationCircleOutlined />,
-         content: "您确定要将人员从该房间退场吗？",
-         okText: "确定",
-         cancelText: "取消",
-         onOk: async () => {
-            // Handle check-out logic after confirmation
-            try {
-               await axios.post(`${config.backend.url}/rooms/${roomId}/checkout`);
-               // Refetch rooms after check-out
-               const response = await axios.get(`${config.backend.url}/rooms`);
-               setRooms(response.data || []);
-               message.success("出场成功");
-            } catch (error) {
-               console.error("Error checking out:", error);
-               message.error("出场失败");
-            }
-         },
-      });
-   }, []);
    const handleCheckInOk = useCallback(async () => {
       if (!selectedRoom || !selectedPersonnel) {
          message.error("请先选择房间和人员");
@@ -124,7 +98,7 @@ const RoomManagement: React.FC = () => {
          });
          // Refetch rooms after check-in
          const response = await axios.get(`${config.backend.url}/rooms`);
-         setRooms(response.data || []);
+         dispatch(setRooms(response.data || []));
          setIsCheckInModalVisible(false);
          message.success("入场成功");
       } catch (error) {
@@ -149,28 +123,25 @@ const RoomManagement: React.FC = () => {
       [availablePersonnel]
    );
 
-   const handleAddRoom = useCallback(
-      async (room: Room) => {
-         try {
-            const response = await axios.post(`${config.backend.url}/rooms`, {
-               ...room,
-               mattress_distance: room.mattress_distance ? room.mattress_distance * 100 : 150,
-            });
-            const newRoom = response.data;
-            setRooms([...rooms, { ...newRoom, mattress_distance: newRoom.mattress_distance / 100 }]);
-            setIsModalVisible(false);
-            message.success("新增房间成功");
-         } catch (error) {
-            console.error("Error adding room:", error);
-            if (axios.isAxiosError(error)) {
-               message.error(error.response?.data?.error || "新增房间失败！");
-            } else {
-               message.error("新增房间失败！");
-            }
+   const handleAddRoom = async (room: Room) => {
+      try {
+         const response = await axios.post(`${config.backend.url}/rooms`, {
+            ...room,
+            mattress_distance: room.mattress_distance ? room.mattress_distance * 100 : 150,
+         });
+         const newRoom = response.data;
+         dispatch(setRooms([...rooms, { ...newRoom, mattress_distance: newRoom.mattress_distance / 100 }]));
+         setIsModalVisible(false);
+         message.success("新增房间成功");
+      } catch (error) {
+         console.error("Error adding room:", error);
+         if (axios.isAxiosError(error)) {
+            message.error(error.response?.data?.error || "新增房间失败！");
+         } else {
+            message.error("新增房间失败！");
          }
-      },
-      [rooms]
-   );
+      }
+   };
 
    const handleEditRoom = useCallback(
       async (room: Room) => {
@@ -180,9 +151,11 @@ const RoomManagement: React.FC = () => {
                mattress_distance: room.mattress_distance ? room.mattress_distance * 100 : 150,
             });
             const newRoom = response.data;
-            setRooms(
-               rooms.map((r) =>
-                  r.id === room.id ? { ...newRoom, mattress_distance: newRoom.mattress_distance / 100 } : r
+            dispatch(
+               setRooms(
+                  rooms.map((r) =>
+                     r.id === room.id ? { ...newRoom, mattress_distance: newRoom.mattress_distance / 100 } : r
+                  )
                )
             );
             setIsModalVisible(false);
@@ -201,14 +174,22 @@ const RoomManagement: React.FC = () => {
 
    const handleDeleteRoom = useCallback(
       async (id: number) => {
-         try {
-            await axios.delete(`${config.backend.url}/rooms/${id}`);
-            setRooms(rooms.filter((r) => r.id !== id));
-            message.success("删除房间成功");
-         } catch (error) {
-            console.error("Error deleting room:", error);
-            message.error("删除房间失败！");
-         }
+         Modal.confirm({
+            title: "确认删除",
+            content: "确定要删除该房间吗？",
+            okText: "确认",
+            cancelText: "取消",
+            onOk: async () => {
+               try {
+                  await axios.delete(`${config.backend.url}/rooms/${id}`);
+                  dispatch(setRooms(rooms.filter((r) => r.id !== id)));
+                  message.success("删除房间成功");
+               } catch (error) {
+                  console.error("Error deleting room:", error);
+                  message.error("删除房间失败！如房间内仍有人员，请先撤防");
+               }
+            },
+         });
       },
       [rooms]
    );
@@ -216,7 +197,7 @@ const RoomManagement: React.FC = () => {
    const showModal = useCallback(async (room: Room | null) => {
       room ? form.setFieldsValue(room) : form.resetFields();
       setEditingRoom(room);
-      setPersonPose(room?.person_pose || "");
+      setPersonPose(room?.person_pose || "卧姿");
       setIsModalVisible(true);
    }, []);
 
@@ -247,11 +228,10 @@ const RoomManagement: React.FC = () => {
       { title: "雷达URL", dataIndex: "ip", key: "ip" },
       { title: "人员姿态", dataIndex: "person_pose", key: "person_pose" },
       {
-         title: "床垫距离",
+         title: "雷达距离",
          dataIndex: "mattress_distance",
          key: "mattress_distance",
-         render: (mattressDistance: number | null, record: Room) =>
-            mattressDistance !== null && record.person_pose === "卧姿" ? `${mattressDistance.toFixed(2)} 米` : "-", // Convert to meters and display
+         render: (mattressDistance: number | null, record: Room) => `${mattressDistance?.toFixed(2) || "- "} 米`, // Convert to meters and display
       },
       {
          title: "人员",
@@ -316,17 +296,14 @@ const RoomManagement: React.FC = () => {
                <Form.Item label='雷达URL' name='ip' rules={[{ required: true, message: "请输入雷达的URL地址" }]}>
                   <Input placeholder='请输入雷达的URL地址' />
                </Form.Item>
-               <Form.Item label='人员姿态' name='person_pose'>
-                  <Select placeholder='请选择人员姿态' onChange={handlePersonPoseChange}>
+               <Form.Item label='人员姿态' name='person_pose' rules={[{ required: true }]}>
+                  <Select placeholder='请选择人员姿态'>
                      <Select.Option value='坐姿'>坐姿</Select.Option>
                      <Select.Option value='卧姿'>卧姿</Select.Option>
                   </Select>
                </Form.Item>
-               <Form.Item label='床垫距离' name='mattress_distance'>
-                  <InputNumber addonAfter={"米"} disabled={personPose !== "卧姿"} />
-               </Form.Item>
-               <Form.Item label='立即启用监测' name='enabled'>
-                  <Switch />
+               <Form.Item label='雷达距离' name='mattress_distance'>
+                  <InputNumber addonAfter='米' />
                </Form.Item>
                <Form.Item label='备注' name='remark'>
                   <Input.TextArea rows={4} />

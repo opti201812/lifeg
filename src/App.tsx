@@ -1,15 +1,8 @@
 // App.tsx
 
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Layout, Menu, Button, message } from "antd";
-import {
-   UserOutlined,
-   AlertOutlined,
-   DashboardOutlined,
-   HistoryOutlined,
-   SettingOutlined,
-   TeamOutlined,
-} from "@ant-design/icons";
+import { UserOutlined, AlertOutlined, DashboardOutlined, HistoryOutlined, SettingOutlined } from "@ant-design/icons";
 import { Route, Routes, Link, Navigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import UserManagement from "./components/UserManagement";
@@ -32,7 +25,6 @@ import axios from "axios";
 import {
    updateRoomData,
    addAlarm,
-   clearAlarms,
    setRoomNetworkFailure,
    setRoomRadarFailure,
    setRoomRadarAbnormal,
@@ -45,6 +37,8 @@ import { Room } from "./types";
 axios.defaults.withCredentials = true;
 
 const { Header, Content, Sider, Footer } = Layout;
+
+const ENVIRONMENT_THRESHOLD = 10;
 
 const Logo = styled.img`
    height: 32px;
@@ -86,6 +80,18 @@ const App: React.FC = () => {
       []
    );
 
+   const [BRAND_CONFIG, setBRAND_CONFIG] = useState({
+      PRODUCT_NAME: "生命体征监测系统2",
+      PRODUCT_LOGO: "LifeGuard.png",
+      COMPANY_NAME: "浙江虎格电气有限公司",
+   });
+   useEffect(() => {
+      fetch(`/brand.json`)
+         .then((response) => response.json())
+         .then((data) => setBRAND_CONFIG(data))
+         .catch((error) => console.error("Error fetching JSON data:", error));
+   }, []);
+
    const handleLogout = useCallback(async () => {
       try {
          await axios.post(`${config.backend.url}/logout`); // Call the logout API
@@ -99,6 +105,11 @@ const App: React.FC = () => {
 
    useEffect(() => {
       let ws: WebSocket | null = null;
+      let reconnectTimeout: NodeJS.Timeout | null = null; // Timer for reconnection
+      const INITIAL_RECONNECT_DELAY = 1000; // Initial delay before first reconnection attempt
+      const RECONNECT_DELAY_MULTIPLIER = 2; // Multiplier for increasing delay between reconnection attempts
+      let currentReconnectDelay = INITIAL_RECONNECT_DELAY; // Start with base delay
+
       const connectToWebSocket = () => {
          console.log("Connecting to WebSocket server...", `${config.backend.ws_url}`);
          ws = new WebSocket(`${config.backend.ws_url}`);
@@ -122,43 +133,54 @@ const App: React.FC = () => {
                      console.log("no role");
                   }
                }
-            }, 100); // Check every 100ms
+            }, currentReconnectDelay); // Check every 100ms
          };
 
          // 设置 ws.onmessage 处理所有消息类型
          ws.onmessage = (event) => {
+            if (!user?.room_id && user.role !== "admin") return;
             const data = JSON.parse(event.data);
+            const { roomId } = data;
+            if (roomId !== undefined && roomId !== user.room_id && user.role !== "admin") return;
 
             if (data.type === "subscribe") {
                // 处理订阅响应
                if (data.success) {
                   console.info(`Subscribed to ${data.topic}`);
+                  dispatch(setRoomNetworkFailure({ roomId: data.roomId, status: false }));
                } else {
                   console.error(`Failed to subscribe to ${data.topic}: ${data.error}`);
                }
             } else if (data.type === "roomData") {
-               dispatch(updateRoomData(data));
+               if (data.data.environment > ENVIRONMENT_THRESHOLD || parseInt(data.data.environment) === 0) {
+                  dispatch(updateRoomData(data));
+                  dispatch(setRoomNetworkFailure({ roomId: data.roomId, status: false }));
+               } else {
+                  // console.info(`Environment too bad. Received room data: ${JSON.stringify(data)}`);
+               }
             } else if (data.type === "alertMessage") {
                dispatch(addAlarm(data));
+               dispatch(setRoomNetworkFailure({ roomId: data.roomId, status: false }));
             } else if (data.type === "networkFailure") {
-               // 更新对应房间的网络故障状态
                dispatch(setRoomNetworkFailure({ roomId: data.roomId, status: true }));
             } else if (data.type === "radarFailure") {
-               // 更新对应房间的网络故障状态
                dispatch(setRoomRadarFailure({ roomId: data.roomId, status: true }));
             } else if (data.type === "radarAbnormal") {
-               // 更新对应房间的网络故障状态
                dispatch(setRoomRadarAbnormal({ roomId: data.roomId, status: true }));
             }
          };
 
          ws.onclose = () => {
             console.log("Disconnected from WebSocket server");
+            reconnectTimeout && clearTimeout(reconnectTimeout); // Clear any existing timeout
+
+            // Implement exponential backoff strategy for reconnection attempts
+            reconnectTimeout = setTimeout(connectToWebSocket, currentReconnectDelay);
          };
 
          ws.onerror = (error) => {
-            console.error("WebSocket error:", error);
-            // 添加错误处理逻辑，例如向用户显示错误消息或尝试重新连接
+            message.error("实时数据服务连接错误！");
+            currentReconnectDelay *= currentReconnectDelay > 10000 ? 1 : RECONNECT_DELAY_MULTIPLIER; // Double delay each time
          };
 
          wsRef.current = ws; // Store the WebSocket instance in the ref
@@ -168,9 +190,6 @@ const App: React.FC = () => {
       // Cleanup function to close the WebSocket connection and unsubscribe
       return () => {
          if (wsRef.current) {
-            // Unsubscribe from all subscribed topics (you'll need to implement this)
-            //   unsubscribeFromAllTopics(wsRef.current);
-
             wsRef.current.close();
             wsRef.current = null; // Clear the reference
          }
@@ -179,13 +198,12 @@ const App: React.FC = () => {
 
    useEffect(() => {
       if (!isAuthenticated) return;
-      // Fetch room data from API
       const fetchRooms = async () => {
          try {
             const response = await axios.get(`${config.backend.url}/rooms`);
             const roomsData = response.data.map((room: Room) => ({
                ...room,
-               enabled: room.enabled as unknown,
+               enabled: room.enabled,
             }));
             dispatch(setRooms(roomsData || [])); // Dispatch the setRooms action
          } catch (error) {
@@ -193,6 +211,7 @@ const App: React.FC = () => {
             message.error("获取房间信息失败！");
          }
       };
+
       fetchRooms();
    }, [isAuthenticated]);
 
@@ -209,8 +228,8 @@ const App: React.FC = () => {
             }}
          >
             <div style={{ display: "flex", alignItems: "center" }}>
-               <Logo src='/images/logo2.png' alt='Logo' />
-               <h1 style={{ margin: 0, color: "#fff" }}>生命体征监测系统</h1>
+               <Logo src={"/images/" + BRAND_CONFIG.PRODUCT_LOGO} alt='Logo' />
+               <h1 style={{ margin: 0, color: "#fff" }}>{BRAND_CONFIG.PRODUCT_NAME}</h1>
             </div>
             {isAuthenticated && (
                <div style={{ marginRight: "16px" }}>
@@ -233,9 +252,7 @@ const App: React.FC = () => {
                   <Route path='/login' element={<Login />} />
                   <Route
                      path='/room'
-                     element={
-                        isAuthenticated ? <RoomPage roomId={room_id} gender={""} age={0} /> : <Navigate to='/login' />
-                     }
+                     element={isAuthenticated ? <RoomPage roomId={room_id} /> : <Navigate to='/login' />}
                   />
                </Routes>
             )}
@@ -288,7 +305,7 @@ const App: React.FC = () => {
                   {isAuthenticated && <AlarmBanner />}
                </Content>
                <Footer style={{ textAlign: "center", width: "100%", color: "rgba(0, 0, 0, 0.45)" }}>
-                  2024 浙江骊三科技有限公司 ©️版权所有
+                  {new Date().getFullYear()} {BRAND_CONFIG?.COMPANY_NAME} 版权所有
                </Footer>
             </Layout>
          </Layout>

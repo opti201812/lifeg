@@ -122,6 +122,7 @@ const AlarmForm: React.FC = () => {
       },
       { label: "报警声音", name: "alertSound", required: false, message: "请选择报警声音文件", type: "file" },
       { label: "是否闪灯", name: "flashEnabled", required: false, message: "", type: "boolean" },
+      { label: "房间内是否显示姓名", name: "isPersonNameVisible", required: false, message: "", type: "boolean" },
    ];
 
    useEffect(() => {
@@ -224,8 +225,6 @@ const AlarmForm: React.FC = () => {
             ))}
          </Row>
          <Form.Item wrapperCol={{ span: 24 }}>
-            {" "}
-            {/* Make the button full width */}
             <Button type='primary' htmlType='submit'>
                保存设置
             </Button>

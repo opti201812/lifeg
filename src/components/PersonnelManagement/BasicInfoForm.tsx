@@ -8,10 +8,10 @@ interface BasicInfoFormProps {
    editingPersonnel: Personnel | null;
 }
 
-const createFormItem = (label: string, name: string[], addonAfter: string) => (
+const createFormItem = (label: string, name: string[], addonAfter: string, enabled = false) => (
    <Col span={6}>
       <Form.Item label={label} name={name}>
-         <Input type='number' disabled addonAfter={addonAfter} />
+         <Input type='number' disabled={!enabled} addonAfter={addonAfter} />
       </Form.Item>
    </Col>
 );
@@ -84,31 +84,55 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, editingPersonnel })
          <Divider />
          <Row gutter={16}>
             <Col span={12}>
-               <Form.Item label='平均心率' name={["heart_rate"]} rules={[{ required: true, message: "请输入心率" }]}>
+               <Form.Item
+                  label='平时心率'
+                  name={["heart_rate"]}
+                  rules={[{ required: false, message: "请输入平时心率" }]}
+               >
                   <Input type='number' addonAfter='次/分' />
                </Form.Item>
             </Col>
             <Col span={12}>
                <Form.Item
-                  label='平均呼吸次数'
+                  label='平时呼吸频率'
                   name={["breath_rate"]}
-                  rules={[{ required: true, message: "请输入呼吸" }]}
+                  rules={[{ required: false, message: "请输入平时呼吸频率" }]}
                >
                   <Input type='number' addonAfter='次/分' />
                </Form.Item>
             </Col>
          </Row>
          <Row gutter={16}>
-            {createFormItem("上限比", ["heartBeatRatioUpper"], "%")}
+            {createFormItem("上限比", ["heartBeatRatioUpper"], "%", true)}
             {createFormItem("上限值", ["heartRateUpperValue"], "次/分")}
-            {createFormItem("上限比", ["breathRatioUpper"], "%")}
+            {createFormItem("上限比", ["breathRatioUpper"], "%", true)}
             {createFormItem("上限值", ["breathRateUpperValue"], "次/分")}
          </Row>
          <Row gutter={16}>
-            {createFormItem("下限比", ["heartBeatRatioLower"], "%")}
+            {createFormItem("下限比", ["heartBeatRatioLower"], "%", true)}
             {createFormItem("下限值", ["heartRateLowerValue"], "次/分")}
-            {createFormItem("下限比", ["breathRatioLower"], "%")}
+            {createFormItem("下限比", ["breathRatioLower"], "%", true)}
             {createFormItem("下限值", ["breathRateLowerValue"], "次/分")}
+         </Row>
+         <Row gutter={16}>
+            <Col span={12}>
+               <Form.Item
+                  label='静息心率下限'
+                  name={["heart_rate_resting"]}
+                  rules={[{ required: false, message: "请输入静息心率下限" }]}
+               >
+                  <Input type='number' addonAfter='次/分' />
+               </Form.Item>
+            </Col>
+            <Col span={12}>
+               <Form.Item
+                  label='静息呼吸频率下限'
+                  name={["breath_rate_resting"]}
+                  rules={[{ required: false, message: "请输入静息呼吸频率下限" }]}
+               >
+                  <Input type='number' addonAfter='次/分' />
+               </Form.Item>
+            </Col>
          </Row>
          <Row gutter={16}>
             <Col span={12}>
@@ -127,7 +151,7 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, editingPersonnel })
                </Form.Item>
             </Col>
             <Col span={12}>
-               <Form.Item name={["remark"]} label='其它病史' rules={[{ required: false, message: "请输入备注" }]}>
+               <Form.Item name={["remark"]} label='其它病史/备注' rules={[{ required: false, message: "请输入备注" }]}>
                   <Input.TextArea rows={2} />
                </Form.Item>
             </Col>

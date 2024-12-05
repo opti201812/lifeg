@@ -26,14 +26,14 @@ const PersonnelManagement: React.FC = () => {
    }, []);
 
    const columns = [
-      { title: "人员编号", dataIndex: "id", key: "id" }, // Access nested property
-      { title: "姓名", dataIndex: "name", key: "name" }, // Access nested property
-      { title: "身份证号码", dataIndex: "id_number", key: "id_number" }, // Access nested property
-      { title: "职业", dataIndex: "occupation", key: "occupation" }, // Access nested property
-      { title: "年龄", dataIndex: "age", key: "age" }, // Access nested property
+      { title: "人员编号", dataIndex: "id", key: "id" },
+      { title: "姓名", dataIndex: "name", key: "name" },
+      { title: "身份证号码", dataIndex: "id_number", key: "id_number" },
+      { title: "职业", dataIndex: "occupation", key: "occupation" },
+      { title: "年龄", dataIndex: "age", key: "age" },
       { title: "性别", dataIndex: "gender", key: "gender" },
-      { title: "平均心率", dataIndex: "heart_rate", key: "heart_rate" }, // Access nested property
-      { title: "平均呼吸次数", dataIndex: "breath_rate", key: "breath_rate" }, // Access nested property
+      { title: "平均心率", dataIndex: "heart_rate", key: "heart_rate" },
+      { title: "平均呼吸次数", dataIndex: "breath_rate", key: "breath_rate" },
       {
          title: "病史",
          dataIndex: "medical_history",
@@ -43,16 +43,13 @@ const PersonnelManagement: React.FC = () => {
             return matchingHistory ? matchingHistory.label : value; // Display label or original value if not found
          },
       },
-      { title: "其它病史", dataIndex: "remark", key: "remark" }, // Access nested property
+      { title: "其它病史/备注", dataIndex: "remark", key: "remark" },
       {
          title: "操作",
          key: "action",
          render: (_: any, record: any) => (
             <div style={{ display: "flex", alignItems: "center" }}>
                <Button onClick={() => navigate(`/personnel-management/${record.id}`)}>编辑</Button>
-               <Link to={`/entry-exit-management`} style={{ marginLeft: "8px" }}>
-                  进出场
-               </Link>
             </div>
          ),
       },

@@ -2,20 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { Alert, Button, message, Space } from "antd";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
-import { useLocation, useNavigate } from "react-router-dom";
 import { MEDICAL_HISTORIES } from "../../types";
 import { removeAlarm } from "../../store/dataSlice";
 import axios from "axios";
 import config from "../../config";
+import { createSelector } from "reselect";
 
-interface AlarmMessage {
-   roomId: number;
-   level: number;
-   message: string;
-   medicalHistoryCode?: string; // 可选的病史代码
-}
 const getAlarmLevelText = (level: number) => {
-   // get current time
    switch (level) {
       case 1:
          return "极度危险";
@@ -29,14 +22,38 @@ const getAlarmLevelText = (level: number) => {
 };
 
 const AlarmBanner: React.FC = () => {
-   const alarms = useSelector((state: RootState) => state.data.alarms); // Get alarms from Redux store
+   const selectUser = (state: RootState) => state.user;
+
+   const selectUserAuthInfo = createSelector(selectUser, (user) => ({
+      isAuthenticated: user.isAuthenticated,
+      role: user.role,
+      room_id: user.room_id,
+   }));
+   const { isAuthenticated, role, room_id } = useSelector(selectUserAuthInfo);
+   const alarms = useSelector(
+      (state: RootState) =>
+         isAuthenticated &&
+         (role === "user" ? state.data.alarms.filter((alarm) => alarm.roomId === room_id) : state.data.alarms)
+   );
+
    const dispatch = useDispatch();
 
    const audioRef = useRef<HTMLAudioElement | null>(null); // 用于存储 audio 元素的引用
 
    useEffect(() => {
+      // 检查alarms各项level是否均大于2，如果是，则停止播放声音
+      if (alarms && alarms.length > 0) {
+         const allLowLevel = alarms.every((alarm) => alarm.level > 2);
+         if (allLowLevel) {
+            if (audioRef.current) {
+               audioRef.current.pause();
+               audioRef.current.currentTime = 0; // Reset playback position
+            }
+            return;
+         }
+      }
       // 当 alarms 变化时，控制声音播放
-      if (alarms.length > 0) {
+      if (alarms && alarms.length > 0) {
          const alertSound = localStorage.getItem("alertSound") || "alarm_001.mp3";
          const soundUrl = `/sounds/${alertSound}`;
          if (!audioRef.current) {
@@ -70,7 +87,7 @@ const AlarmBanner: React.FC = () => {
    };
    return (
       <>
-         {alarms.length > 0 && (
+         {alarms && alarms.length > 0 && (
             <div
                style={{
                   position: "fixed",
@@ -98,18 +115,20 @@ const AlarmBanner: React.FC = () => {
                               )}】 ${alarm.message} `}
                               {alarm.medicalHistoryCode &&
                                  `（个人病史：${
-                                    MEDICAL_HISTORIES.find((item) => item.value === alarm.medicalHistoryCode)?.label ||
-                                    "未知"
+                                    MEDICAL_HISTORIES.find((item) => item.value === alarm.medicalHistoryCode)?.label +
+                                       (alarm.remark ? " " + alarm.remark : "") || "未知"
                                  }）`}
                            </span>
-                           <Space>
-                              <Button type='primary' size='small' onClick={() => handleAlarm(alarm.id, "立即处理")}>
-                                 立即处理
-                              </Button>
-                              <Button size='small' onClick={() => handleAlarm(alarm.id, "忽略")}>
-                                 忽略
-                              </Button>
-                           </Space>
+                           {alarm.level < 3 && (
+                              <Space>
+                                 <Button type='primary' size='small' onClick={() => handleAlarm(alarm.id, "立即处理")}>
+                                    立即处理
+                                 </Button>
+                                 <Button size='small' onClick={() => handleAlarm(alarm.id, "忽略")}>
+                                    忽略
+                                 </Button>
+                              </Space>
+                           )}
                         </div>
                      }
                      banner

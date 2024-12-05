@@ -1,0 +1,8 @@
+{
+    "PRODUCT_NAME": "生命体征监测系统 1.0",
+    "PRODUCT_NAME的说明": "产品名称，显示在页眉",
+    "PRODUCT_LOGO": "logo2.png",
+    "PRODUCT_LOGO的说明": "产品LOGO, 显示在页眉. 要求: PNG格式图片、尺寸: 100*100、文件大小一般不超过10KB, 放置在本文件所在夹下的images文件夹中",
+    "COMPANY_NAME": "浙江虎格电气有限公司",
+    "COMPANY_NAME的说明": "公司名称，显示在页脚"
+}

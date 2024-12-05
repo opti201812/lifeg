@@ -15,7 +15,6 @@ const Login: React.FC = () => {
    const [showVerification, setShowVerification] = useState(false); // State to control visibility
    const dispatch = useDispatch();
    const navigate = useNavigate();
-   const [rememberMe, setRememberMe] = useState(localStorage.getItem("rememberMe") === "true"); // State for the checkbox
    const [countdown, setCountdown] = useState(0); // State for countdown timer
 
    useEffect(() => {
@@ -36,7 +35,18 @@ const Login: React.FC = () => {
          try {
             const response = await axios.post(`${config.backend.url}/login`, {}, { withCredentials: true });
             if (response.data.success && response.data.message === "Already logged in") {
-               dispatch(setCurrentUser(response.data.user));
+               dispatch(
+                  setCurrentUser({
+                     ...response.data.user, // Spread all user properties
+                     name: response.data.user.name || response.data.user.account, // Use name or account as fallback
+                  })
+               );
+
+               if (response.data.user.role === "admin") {
+                  navigate("/overview");
+               } else {
+                  navigate("/room");
+               }
             } else {
                dispatch(logout());
             }
@@ -69,8 +79,6 @@ const Login: React.FC = () => {
                   name: response.data.user.name || response.data.user.account, // Use name or account as fallback
                })
             );
-            // Store rememberMe preference in localStorage
-            localStorage.setItem("rememberMe", rememberMe.toString());
 
             if (response.data.user.role === "admin") {
                navigate("/overview");
