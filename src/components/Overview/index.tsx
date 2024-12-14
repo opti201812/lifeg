@@ -53,6 +53,18 @@ const Overview: React.FC = () => {
       if (!selectedRoomId) fetchRooms();
    }, [selectedRoomId]);
 
+   // 增加useeffect，当alarms变化时，对rooms进行排序，当前处于报警状态的room排序在最前面
+   useEffect(() => {
+      const sortedRooms = [...rooms].sort((a, b) => {
+         const aHasAlarm = alarms.some((alarm) => alarm.roomId === a.id);
+         const bHasAlarm = alarms.some((alarm) => alarm.roomId === b.id);
+         if (aHasAlarm && !bHasAlarm) return -1; // a排在前面
+         if (!aHasAlarm && bHasAlarm) return 1; // b排在前面
+         return 0; // 顺序不变
+      });
+      dispatch(setRooms(sortedRooms));
+   }, [alarms]);
+
    // Function to check if current time is within restricted schedule
    const isInRestrictedSchedule = useCallback((room: Room) => {
       if (!room.personnel_id || !room.schedules || room.schedules.length === 0) {

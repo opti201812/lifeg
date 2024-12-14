@@ -1,3 +1,5 @@
+// pages/Room/index.tsx
+
 import React, { useState, useEffect, useRef } from "react";
 import { Carousel, message, Button, Modal, Form, InputNumber, Input, Select, Row, Col, Menu, Dropdown } from "antd";
 import { useDispatch, useSelector } from "react-redux";

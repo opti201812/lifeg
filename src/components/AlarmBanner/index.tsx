@@ -94,6 +94,7 @@ const AlarmBanner: React.FC = () => {
                   bottom: 0,
                   left: 0,
                   width: "100%",
+                  maxHeight: "300px",
                   zIndex: 1000, // Ensure it's on top
                }}
             >

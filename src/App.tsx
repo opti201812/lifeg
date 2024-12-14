@@ -38,7 +38,7 @@ axios.defaults.withCredentials = true;
 
 const { Header, Content, Sider, Footer } = Layout;
 
-const ENVIRONMENT_THRESHOLD = 10;
+const ENVIRONMENT_THRESHOLD = process.env.REACT_APP_ENVIRONMENT_THRESHOLD || 10;
 
 const Logo = styled.img`
    height: 32px;
@@ -156,7 +156,6 @@ const App: React.FC = () => {
                   dispatch(updateRoomData(data));
                   dispatch(setRoomNetworkFailure({ roomId: data.roomId, status: false }));
                } else {
-                  // console.info(`Environment too bad. Received room data: ${JSON.stringify(data)}`);
                }
             } else if (data.type === "alertMessage") {
                dispatch(addAlarm(data));
@@ -186,7 +185,7 @@ const App: React.FC = () => {
          wsRef.current = ws; // Store the WebSocket instance in the ref
       };
 
-      connectToWebSocket();
+      if (user.isAuthenticated) connectToWebSocket();
       // Cleanup function to close the WebSocket connection and unsubscribe
       return () => {
          if (wsRef.current) {

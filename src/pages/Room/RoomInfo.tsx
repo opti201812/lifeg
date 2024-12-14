@@ -1,3 +1,5 @@
+// pages/Room/RoomInfo.tsx
+
 import React from "react";
 import { Tag, Typography } from "antd";
 import { Room } from "../../types";
