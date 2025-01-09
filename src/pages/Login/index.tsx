@@ -7,13 +7,15 @@ import { logout, setCurrentUser } from "../../store/userSlice";
 import axios from "axios";
 import config from "../../config";
 import { AlertConfig } from "../../types"; // Import types
+import { fetchAlertConfig } from "../../store/alertConfigSlice"; // Import the fetchAlertConfig thunk
+import { AppDispatch, RootState } from "../../store"; // Import AppDispatch and RootState types
 
 const Login: React.FC = () => {
    const [username, setUsername] = useState("");
    const [password, setPassword] = useState("");
    const [verificationCode, setVerificationCode] = useState(""); // New state for verification code
    const [showVerification, setShowVerification] = useState(false); // State to control visibility
-   const dispatch = useDispatch();
+   const dispatch = useDispatch<AppDispatch>(); // Use AppDispatch type for useDispatch
    const navigate = useNavigate();
    const [countdown, setCountdown] = useState(0); // State for countdown timer
 
@@ -24,6 +26,7 @@ const Login: React.FC = () => {
          .then((res) => {
             const smsEnabledConfig = res.data.find((config: AlertConfig) => config.config_name === "smsEnabled");
             setShowVerification(smsEnabledConfig?.value === "true"); // Show if enabled
+            dispatch(fetchAlertConfig()); // Fetch alert config
          })
          .catch((err) => {
             console.error("Error fetching SMS config:", err);

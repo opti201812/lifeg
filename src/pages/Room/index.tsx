@@ -82,9 +82,9 @@ const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
    }, [roomId, isMonitoringEnabled]);
 
    const getInitialHeartAndBreathRate = (
-      breath_rate: any,
-      heart_rate_resting: any,
       heart_rate: any,
+      heart_rate_resting: any,
+      breath_rate: any,
       breath_rate_resting: any,
       avgHeartRate: any,
       avgBreathRate: any
@@ -113,9 +113,9 @@ const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
 
             form.setFieldsValue(
                getInitialHeartAndBreathRate(
-                  breath_rate,
-                  heart_rate_resting,
                   heart_rate,
+                  heart_rate_resting,
+                  breath_rate,
                   breath_rate_resting,
                   avgHeartRate,
                   avgBreathRate
@@ -227,7 +227,6 @@ const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
          style={{ height: "50vh", overflowY: "auto", marginLeft: "5em" }}
          onClick={(info) => {
             const selectedPerson = personnelList.find((person) => person.name === info.key);
-            console.log("==> ~ selectedPerson:", selectedPerson);
             if (selectedPerson) {
                const { heart_rate, heart_rate_resting, breath_rate, breath_rate_resting } = selectedPerson;
                form.setFieldsValue({
@@ -255,7 +254,7 @@ const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
          ))}
       </Menu>
    );
-
+   const [currentSlide, setCurrentSlide] = useState(0);
    return (
       <div style={{ margin: "0 auto", maxWidth: "1000px", width: "100%", height: "100%" }}>
          {!isMonitoringEnabled ? (
@@ -280,20 +279,26 @@ const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
          ) : (
             <>
                <Carousel autoplay={false} autoplaySpeed={10000} ref={carouselRef}>
-                  <RoomStatusSlide roomId={roomId} roomInfo={roomInfo} />
-                  <DailyDataSlide roomId={roomId} roomInfo={roomInfo} />
-                  <WeeklyDataSlide roomId={roomId} roomInfo={roomInfo} />
+                  {currentSlide === 0 && <RoomStatusSlide roomId={roomId} roomInfo={roomInfo} />}
+                  {currentSlide === 1 && <DailyDataSlide roomId={roomId} roomInfo={roomInfo} />}
+                  {currentSlide === 2 && <WeeklyDataSlide roomId={roomId} roomInfo={roomInfo} />}
                </Carousel>
                <div style={{ marginTop: "10px", textAlign: "center" }}>
                   <Button
                      icon={<LeftOutlined />}
-                     onClick={() => carouselRef.current?.prev()}
+                     onClick={() => setCurrentSlide((prev) => (prev + 2) % 3)}
                      style={{ marginRight: "10px" }}
                   />
-                  <Button icon={<RightOutlined />} onClick={() => carouselRef.current?.next()} />
+                  <Button icon={<RightOutlined />} onClick={() => setCurrentSlide((prev) => (prev + 1) % 3)} />
                </div>
                <div style={{ textAlign: "center", marginTop: "10px" }}>
-                  <Button type='primary' danger onClick={handleToggleMonitoring}>
+                  <Button
+                     type='primary'
+                     danger
+                     onClick={handleToggleMonitoring}
+                     size='large'
+                     style={{ height: 48, width: 160, fontSize: 24, marginBottom: 20 }}
+                  >
                      撤防
                   </Button>
                </div>
@@ -375,6 +380,10 @@ const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
                {`供参考：过去5分钟平均心率为${avgHeartRateIn5Minutes || "-"}次/分，平均呼吸率为${
                   avgBreathRateIn5Minutes || "-"
                }次/分`}
+            </p>
+            <p style={{ fontSize: 13, color: "gray" }}>1、正常人的心率范围在60-100，呼吸范围12-30；</p>
+            <p style={{ fontSize: 13, color: "gray" }}>
+               2、静息是指在休息状态（如睡眠状态），其设定值应该低于各自下限值
             </p>
          </Modal>
       </div>

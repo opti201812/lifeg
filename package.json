@@ -4,7 +4,7 @@
   "description": "A Life Guard application with user management, permission management, and alarm display features.",
   "main": "src/index.tsx",
   "scripts": {
-    "start": "REACT_APP_ENVIRONMENT_THRESHOLD=5 REACT_APP_BACKEND_URL=http://localhost:3030/api react-scripts start",
+    "start": "REACT_APP_ENVIRONMENT_THRESHOLD=1 REACT_APP_BACKEND_URL=http://localhost:3030/api react-scripts start",
     "build:dev": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/client/build' react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",

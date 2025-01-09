@@ -71,11 +71,12 @@ const AlarmBanner: React.FC = () => {
       }
    }, [alarms]);
 
-   const handleAlarm = async (alarmId: number, action: string) => {
+   const handleAlarm = async (alarmId: number, action: string, personnelId: number) => {
       try {
          // Call the backend API to update the alarm entry
          await axios.put(`${config.backend.url}/history/alarms/${alarmId}`, {
             handling_method: action,
+            personnelId,
          });
 
          dispatch(removeAlarm(alarmId));
@@ -122,10 +123,14 @@ const AlarmBanner: React.FC = () => {
                            </span>
                            {alarm.level < 3 && (
                               <Space>
-                                 <Button type='primary' size='small' onClick={() => handleAlarm(alarm.id, "立即处理")}>
+                                 <Button
+                                    type='primary'
+                                    size='small'
+                                    onClick={() => handleAlarm(alarm.id, "立即处理", alarm.personnelId)}
+                                 >
                                     立即处理
                                  </Button>
-                                 <Button size='small' onClick={() => handleAlarm(alarm.id, "忽略")}>
+                                 <Button size='small' onClick={() => handleAlarm(alarm.id, "忽略", alarm.personnelId)}>
                                     忽略
                                  </Button>
                               </Space>

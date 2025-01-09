@@ -1,12 +1,13 @@
-// store/index.ts
 import { configureStore } from "@reduxjs/toolkit";
 import userReducer from "./userSlice";
-import dataReducer from "./dataSlice"; // Import the data reducer
+import dataReducer from "./dataSlice";
+import alertConfigReducer from "./alertConfigSlice"; // Import the alertConfig reducer
 
 const store = configureStore({
    reducer: {
       user: userReducer,
-      data: dataReducer, // Add the data reducer to the store
+      data: dataReducer,
+      alertConfig: alertConfigReducer, // Add the alertConfig reducer to the store
    },
 });
 

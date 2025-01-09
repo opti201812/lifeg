@@ -32,6 +32,7 @@ import {
 } from "./store/dataSlice";
 import config from "./config";
 import { Room } from "./types";
+import LicenseManagement from "./components/LicenseManagment";
 
 // 在组件外部设置全局配置
 axios.defaults.withCredentials = true;
@@ -74,6 +75,11 @@ const App: React.FC = () => {
                { key: "room-management", icon: <UserOutlined />, label: <Link to='/room-management'>房间配置</Link> },
                { key: "alarm-settings", icon: <UserOutlined />, label: <Link to='/alarm-settings'>报警配置</Link> },
                { key: "user-management", icon: <UserOutlined />, label: <Link to='/user-management'>权限管理</Link> },
+               {
+                  key: "license-management",
+                  icon: <UserOutlined />,
+                  label: <Link to='/license-management'>软件许可</Link>,
+               },
             ],
          },
       ],
@@ -157,7 +163,7 @@ const App: React.FC = () => {
                   dispatch(setRoomNetworkFailure({ roomId: data.roomId, status: false }));
                } else {
                }
-            } else if (data.type === "alertMessage") {
+            } else if (data.type === "alertMessage" || data.type === "invalidLicense") {
                dispatch(addAlarm(data));
                dispatch(setRoomNetworkFailure({ roomId: data.roomId, status: false }));
             } else if (data.type === "networkFailure") {
@@ -273,6 +279,10 @@ const App: React.FC = () => {
                         <Route
                            path='/user-management'
                            element={isAuthenticated ? <UserManagement /> : <Navigate to='/login' />}
+                        />
+                        <Route
+                           path='/license-management'
+                           element={isAuthenticated ? <LicenseManagement /> : <Navigate to='/login' />}
                         />
                         <Route
                            path='/room-management'

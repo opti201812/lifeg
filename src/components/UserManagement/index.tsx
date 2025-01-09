@@ -56,6 +56,7 @@ const UserManagement: React.FC = () => {
             setIsModalVisible(false);
          } catch (error) {
             console.error("Error adding user:", error);
+            message.error("添加用户失败！请检查账户名是否已存在");
          }
       },
       [config.backend.url, users]
@@ -171,7 +172,6 @@ const UserManagement: React.FC = () => {
             >
                <Form
                   form={form}
-                  // initialValues={editingUser || { id: "", name: "", account: "", password: "", role: "", room_id: "" }}
                   onFinish={handleOk}
                   onFinishFailed={(errorInfo) => {
                      console.log("Failed:", errorInfo);

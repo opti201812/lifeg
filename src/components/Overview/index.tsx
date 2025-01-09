@@ -259,7 +259,7 @@ const Overview: React.FC = () => {
          {selectedRoomId && (
             <Button
                type='primary'
-               style={{ position: "absolute", top: 100, right: 20 }}
+               style={{ position: "absolute", width: 160, fontSize: 20, top: 100, right: 20 }}
                onClick={() => setSelectedRoomId(null)}
             >
                返回总览
