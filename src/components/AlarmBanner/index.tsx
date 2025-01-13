@@ -97,51 +97,86 @@ const AlarmBanner: React.FC = () => {
                   width: "100%",
                   maxHeight: "300px",
                   zIndex: 1000, // Ensure it's on top
+                  overflow: "hidden", // Hide overflow
                }}
             >
-               {alarms.map((alarm) => (
-                  <Alert
-                     type={
-                        (["error", "warning", "info", "success"][alarm.level - 1] || "info") as
-                           | "error"
-                           | "warning"
-                           | "info"
-                           | "success"
-                     }
-                     key={alarm.roomId}
-                     message={
-                        <div style={{ display: "flex", justifyContent: "space-between" }}>
-                           <span>
-                              {`${new Date().toLocaleTimeString("zh-CN", { hour12: false })}【${getAlarmLevelText(
-                                 alarm.level
-                              )}】 ${alarm.message} `}
-                              {alarm.medicalHistoryCode &&
-                                 `（个人病史：${
-                                    MEDICAL_HISTORIES.find((item) => item.value === alarm.medicalHistoryCode)?.label +
-                                       (alarm.remark ? " " + alarm.remark : "") || "未知"
-                                 }）`}
-                           </span>
-                           {alarm.level < 3 && (
-                              <Space>
-                                 <Button
-                                    type='primary'
-                                    size='small'
-                                    onClick={() => handleAlarm(alarm.id, "立即处理", alarm.personnelId)}
-                                 >
-                                    立即处理
-                                 </Button>
-                                 <Button size='small' onClick={() => handleAlarm(alarm.id, "忽略", alarm.personnelId)}>
-                                    忽略
-                                 </Button>
-                              </Space>
-                           )}
+               <div style={{ display: "flex", flexWrap: "wrap", maxHeight: "300px" }}>
+                  {alarms.slice(0, 6).map((alarm, index) => {
+                     const isSingleInRow = index % 2 === 0 && index === alarms.length - 1;
+                     return (
+                        <div
+                           style={{
+                              width: isSingleInRow ? "100%" : "50%",
+                              boxSizing: "border-box",
+                              padding: "5px",
+                           }}
+                           key={alarm.roomId}
+                        >
+                           <Alert
+                              type={
+                                 (["error", "warning", "info", "success"][alarm.level - 1] || "info") as
+                                    | "error"
+                                    | "warning"
+                                    | "info"
+                                    | "success"
+                              }
+                              message={
+                                 <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                    <span
+                                       style={{
+                                          whiteSpace: "nowrap",
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          maxWidth: "70%",
+                                       }}
+                                       title={`${new Date().toLocaleTimeString("zh-CN", {
+                                          hour12: false,
+                                       })}【${getAlarmLevelText(alarm.level)}】 ${alarm.message} ${
+                                          alarm.medicalHistoryCode
+                                             ? `（个人病史：${
+                                                  MEDICAL_HISTORIES.find(
+                                                     (item) => item.value === alarm.medicalHistoryCode
+                                                  )?.label + (alarm.remark ? " " + alarm.remark : "") || "未知"
+                                               }）`
+                                             : ""
+                                       }`}
+                                    >
+                                       {`${new Date().toLocaleTimeString("zh-CN", {
+                                          hour12: false,
+                                       })}【${getAlarmLevelText(alarm.level)}】 ${alarm.message} `}
+                                       {alarm.medicalHistoryCode &&
+                                          `（个人病史：${
+                                             MEDICAL_HISTORIES.find((item) => item.value === alarm.medicalHistoryCode)
+                                                ?.label + (alarm.remark ? " " + alarm.remark : "") || "未知"
+                                          }）`}
+                                    </span>
+                                    {alarm.level < 3 && (
+                                       <Space>
+                                          <Button
+                                             type='primary'
+                                             size='small'
+                                             onClick={() => handleAlarm(alarm.id, "立即处理", alarm.personnelId)}
+                                          >
+                                             立即处理
+                                          </Button>
+                                          <Button
+                                             size='small'
+                                             onClick={() => handleAlarm(alarm.id, "忽略", alarm.personnelId)}
+                                          >
+                                             忽略
+                                          </Button>
+                                       </Space>
+                                    )}
+                                 </div>
+                              }
+                              banner
+                              closable={false} // Disable close button
+                              style={{ backgroundColor: "#ffe58f" }}
+                           />
                         </div>
-                     }
-                     banner
-                     closable={false} // Disable close button
-                     style={{ backgroundColor: "#ffe58f" }}
-                  />
-               ))}
+                     );
+                  })}
+               </div>
             </div>
          )}
       </>

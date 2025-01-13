@@ -29,6 +29,7 @@ import {
    setRoomRadarFailure,
    setRoomRadarAbnormal,
    setRooms,
+   removeAlarm,
 } from "./store/dataSlice";
 import config from "./config";
 import { Room } from "./types";
@@ -164,7 +165,13 @@ const App: React.FC = () => {
                } else {
                }
             } else if (data.type === "alertMessage" || data.type === "invalidLicense") {
-               dispatch(addAlarm(data));
+               const alarmId = data.id;
+               dispatch(addAlarm({ roomId, ...data }));
+
+               setTimeout(() => {
+                  dispatch(removeAlarm(alarmId));
+                  console.log(`Scheduled removal of alarm for room ${alarmId}`); // 添加日志
+               }, 4800);
                dispatch(setRoomNetworkFailure({ roomId: data.roomId, status: false }));
             } else if (data.type === "networkFailure") {
                dispatch(setRoomNetworkFailure({ roomId: data.roomId, status: true }));
@@ -220,6 +227,20 @@ const App: React.FC = () => {
       fetchRooms();
    }, [isAuthenticated]);
 
+   const [version, setVersion] = useState("");
+
+   useEffect(() => {
+      const fetchVersion = async () => {
+         try {
+            const response = await axios.get(`${config.backend.url}/version`);
+            setVersion(response.data.version);
+         } catch (error) {
+            console.error("Error fetching version:", error);
+         }
+      };
+      fetchVersion();
+   }, []);
+
    return (
       <Layout style={{ minHeight: "100vh" }}>
          <Header
@@ -234,7 +255,9 @@ const App: React.FC = () => {
          >
             <div style={{ display: "flex", alignItems: "center" }}>
                <Logo src={"/images/" + BRAND_CONFIG.PRODUCT_LOGO} alt='Logo' />
-               <h1 style={{ margin: 0, color: "#fff" }}>{BRAND_CONFIG.PRODUCT_NAME}</h1>
+               <h1 style={{ margin: 0, color: "#fff" }}>
+                  {BRAND_CONFIG.PRODUCT_NAME} {version?.split(".").slice(0, 2).join(".")}
+               </h1>
             </div>
             {isAuthenticated && (
                <div style={{ marginRight: "16px" }}>
@@ -314,7 +337,7 @@ const App: React.FC = () => {
                   {isAuthenticated && <AlarmBanner />}
                </Content>
                <Footer style={{ textAlign: "center", width: "100%", color: "rgba(0, 0, 0, 0.45)" }}>
-                  {new Date().getFullYear()} {BRAND_CONFIG?.COMPANY_NAME} 版权所有
+                  {new Date().getFullYear()} {BRAND_CONFIG?.COMPANY_NAME} 版权所有 {version}
                </Footer>
             </Layout>
          </Layout>

@@ -50,7 +50,7 @@ const dataSlice = createSlice({
          state.alarms = [];
       },
       removeAlarm: (state, action: PayloadAction<number>) => {
-         // 接收 roomId 作为参数
+         // 接收 alarmId 作为参数, 删除对应 alarm
          state.alarms = state.alarms.filter((alarm) => alarm.id !== action.payload);
       },
       setRoomNetworkFailure: (state, action: PayloadAction<{ roomId: number; status: boolean }>) => {
