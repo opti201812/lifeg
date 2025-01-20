@@ -151,7 +151,7 @@ const AlarmBanner: React.FC = () => {
                                           }）`}
                                     </span>
                                     {alarm.level < 3 && (
-                                       <Space>
+                                       <Space style={{ display: "none" }}>
                                           <Button
                                              type='primary'
                                              size='small'
