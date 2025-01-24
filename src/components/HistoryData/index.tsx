@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Table, Button, Input, DatePicker, Select, Space, message, Form, Row, Col } from "antd";
 import { SearchOutlined, ReloadOutlined, DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import config from "../../config";
 import { jsPDF } from "jspdf"; // Import jsPDF for PDF generation
 import autoTable from "jspdf-autotable"; // Import autoTable plugin for table generation in PDF
@@ -37,13 +37,28 @@ const HistoryData: React.FC = () => {
          label: string;
       }[]
    >([]); // 新增 nameOptions
+   const [idNumberOptions, setIdNumberOptions] = useState<
+      {
+         value: string;
+         key: string;
+         label: string;
+      }[]
+   >([]); // 新增 idNumberOptions
    const [form] = Form.useForm();
-   const [filters, setFilters] = useState({
+   const [filters, setFilters] = useState<{
+      personnelId: number | null;
+      name: number | null; // 改为 number 类型因为存储的是 id
+      idNumber: string;
+      dateRange: dayjs.Dayjs[] | null;
+      isAlarm: boolean | null;
+   }>({
       personnelId: null,
-      name: "",
-      dateRange: [dayjs().subtract(1, "day"), dayjs()], // Initial date range for the last 24 hours
+      name: null,
+      idNumber: "",
+      dateRange: [dayjs().subtract(1, "day"), dayjs()],
       isAlarm: null,
    });
+   const [loading, setLoading] = useState(false);
 
    useEffect(() => {
       // Fetch initial personnel options for the dropdown
@@ -52,19 +67,29 @@ const HistoryData: React.FC = () => {
             const response = await axios.get(`${config.backend.url}/personnel`);
 
             const options = response.data.map((person: any) => ({
-               value: person.id, // 修改为 id
+               value: person.id,
                key: person.id,
                label: person.id,
             }));
             setPersonnelOptions(options);
 
-            // 获取 nameOptions
+            // 修改 nameOptions，使用 id 作为 value
             const names = response.data.map((person: any) => ({
-               value: person.id,
+               value: person.id, // 使用 id 作为 value
                key: person.id,
                label: person.name,
             }));
-            setNameOptions(names.map((name: any) => ({ value: name.value, key: name.key, label: name.label })));
+            setNameOptions(names);
+
+            // 获取 idNumberOptions，过滤掉空值
+            const idNumbers = response.data
+               .filter((person: any) => person.id_number && person.id_number.trim() !== "")
+               .map((person: any) => ({
+                  value: person.id_number,
+                  key: person.id_number,
+                  label: person.id_number,
+               }));
+            setIdNumberOptions(idNumbers);
          } catch (error) {
             console.error("Error fetching personnel options:", error);
             message.error("获取人员列表失败");
@@ -78,34 +103,47 @@ const HistoryData: React.FC = () => {
    }, []);
 
    const handleSearch = async () => {
+      if (!filters.personnelId && !filters.name && !filters.idNumber) {
+         message.warning("请选择人员编号或姓名或身份证号");
+         return;
+      }
+
+      setLoading(true);
       try {
          const queryParams = new URLSearchParams();
-         if (filters?.personnelId) {
-            queryParams.append("personnelId", (filters?.personnelId as number).toString());
+
+         if (filters.personnelId) {
+            queryParams.append("personnelId", filters.personnelId.toString());
+         } else if (filters.name) {
+            queryParams.append("personnelId", filters.name.toString());
+         } else if (filters.idNumber) {
+            queryParams.append("idNumber", filters.idNumber);
          }
-         if (filters?.name) {
-            queryParams.append("personnelId", filters.name);
-         }
+
          if (filters.dateRange && (filters.dateRange as dayjs.Dayjs[]).length === 2) {
             queryParams.append("startDate", (filters.dateRange[0] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss"));
             queryParams.append("endDate", (filters.dateRange[1] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss"));
-         }
-         if (filters?.isAlarm !== null && filters?.isAlarm !== undefined) {
-            queryParams.append("isAlarm", (filters.isAlarm as boolean).toString());
          }
 
          const response = await axios.get(`${config.backend.url}/history?${queryParams.toString()}`);
          setHistoricalData(response.data || []);
       } catch (error) {
-         console.error("Error fetching historical data:", error);
-         message.error("获取历史信息失败！");
+         if (error instanceof AxiosError && error.response?.status === 404) {
+            message.error("未找到该身份证号对应的人员");
+         } else {
+            console.error("Error fetching historical data:", error);
+            message.error("获取历史数据失败！");
+         }
+      } finally {
+         setLoading(false);
       }
    };
 
    const handleReset = () => {
       setFilters({
          personnelId: null,
-         name: "",
+         name: null,
+         idNumber: "",
          dateRange: [dayjs().subtract(1, "day"), dayjs()], // Reset to the last 24 hours
          isAlarm: null,
       });
@@ -167,6 +205,16 @@ const HistoryData: React.FC = () => {
    const columns = [
       { title: "人员编号", dataIndex: "personnel_id", key: "personnel_id" },
       { title: "姓名", dataIndex: "name", key: "name" },
+      {
+         title: "身份证号",
+         dataIndex: "id_number",
+         key: "id_number",
+         render: (text: string) => {
+            if (!text) return "";
+            // 保留前6位和最后2位，中间用*代替
+            return text.replace(/^(\d{6})(\d+)(\d{2})$/, "$1********$3");
+         },
+      },
       { title: "心率(次/分)", dataIndex: "heart_rate", key: "heart_rate" },
       { title: "呼吸(次/分)", dataIndex: "breath_rate", key: "breath_rate" },
       {
@@ -204,13 +252,18 @@ const HistoryData: React.FC = () => {
             onFinish={handleSearch}
             form={form}
             onValuesChange={(changedValues, allValues) => {
-               // 当 personnelId 改变时，清空 name
+               // 当 personnelId 或 name 或 idNumber 改变时，清空其他两个
                if (changedValues.personnelId !== undefined) {
-                  allValues.name = "";
+                  allValues.name = null;
+                  allValues.idNumber = "";
                }
-               // 当 name 改变时，清空 personnelId
                if (changedValues.name !== undefined) {
                   allValues.personnelId = null;
+                  allValues.idNumber = "";
+               }
+               if (changedValues.idNumber !== undefined) {
+                  allValues.personnelId = null;
+                  allValues.name = null;
                }
                setFilters(allValues);
             }}
@@ -227,7 +280,7 @@ const HistoryData: React.FC = () => {
                         }
                         options={personnelOptions}
                         allowClear
-                        disabled={!!filters.name} // 禁用 name 输入框，如果 personnelId 已选
+                        disabled={!!filters.name || !!filters.idNumber}
                      />
                   </Form.Item>
                </Col>
@@ -242,7 +295,22 @@ const HistoryData: React.FC = () => {
                         }
                         options={nameOptions}
                         allowClear
-                        disabled={!!filters.personnelId} // 禁用 name 输入框，如果 personnelId 已选
+                        disabled={!!filters.personnelId || !!filters.idNumber}
+                     />
+                  </Form.Item>
+               </Col>
+               <Col span={6}>
+                  <Form.Item label='身份证号' name='idNumber'>
+                     <Select
+                        showSearch
+                        placeholder='请选择身份证号'
+                        optionFilterProp='children'
+                        filterOption={(input, option) =>
+                           (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                        }
+                        options={idNumberOptions}
+                        allowClear
+                        disabled={!!filters.personnelId || !!filters.name}
                      />
                   </Form.Item>
                </Col>
@@ -263,7 +331,7 @@ const HistoryData: React.FC = () => {
             <Form.Item style={{ textAlign: "right" }}>
                {/* 将按钮居右 */}
                <Space>
-                  <Button type='primary' htmlType='submit' icon={<SearchOutlined />}>
+                  <Button type='primary' htmlType='submit' icon={<SearchOutlined />} loading={loading}>
                      查询
                   </Button>
                   <Button onClick={handleReset} icon={<ReloadOutlined />}>

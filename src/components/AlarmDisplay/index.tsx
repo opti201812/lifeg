@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Table, Button, Input, DatePicker, Select, Space, message, Form, Row, Col } from "antd";
 import { SearchOutlined, ReloadOutlined, DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import config from "../../config";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -40,14 +40,22 @@ const AlarmDisplay: React.FC = () => {
          label: string;
       }[]
    >([]);
+   const [idNumberOptions, setIdNumberOptions] = useState<{ value: string; key: string; label: string }[]>([]);
    const [form] = Form.useForm();
-   const [filters, setFilters] = useState({
+   const [filters, setFilters] = useState<{
+      personnelId: number | null;
+      name: number | null; // 改为 number 类型因为存储的是 id
+      idNumber: string;
+      dateRange: dayjs.Dayjs[] | null;
+      handlingTimeRange: dayjs.Dayjs[] | null;
+   }>({
       personnelId: null,
-      name: "",
+      name: null,
+      idNumber: "",
       dateRange: null,
-      alarmLevel: null,
       handlingTimeRange: null,
    });
+   const [loading, setLoading] = useState(false);
 
    useEffect(() => {
       const fetchPersonnelOptions = async () => {
@@ -61,11 +69,21 @@ const AlarmDisplay: React.FC = () => {
             setPersonnelOptions(options);
 
             const names = response.data.map((person: any) => ({
-               value: person.id, // 注意：这里 value 存储的是人员 id
+               value: person.id,
                key: person.id,
                label: person.name,
             }));
             setNameOptions(names);
+
+            // 获取 idNumberOptions，过滤掉空值
+            const idNumbers = response.data
+               .filter((person: any) => person.id_number && person.id_number.trim() !== "")
+               .map((person: any) => ({
+                  value: person.id_number,
+                  key: person.id_number,
+                  label: person.id_number,
+               }));
+            setIdNumberOptions(idNumbers);
          } catch (error) {
             console.error("Error fetching personnel options:", error);
             message.error("获取人员信息失败！");
@@ -87,21 +105,26 @@ const AlarmDisplay: React.FC = () => {
    }, [filters.name]);
 
    const handleSearch = async () => {
+      if (!filters.personnelId && !filters.name && !filters.idNumber) {
+         message.warning("请选择人员编号或姓名或身份证号");
+         return;
+      }
+
+      setLoading(true);
       try {
          const queryParams = new URLSearchParams();
+
          if (filters.personnelId) {
-            queryParams.append("personnelId", (filters.personnelId as number).toString());
+            queryParams.append("personnelId", filters.personnelId.toString());
+         } else if (filters.name) {
+            queryParams.append("personnelId", filters.name.toString());
+         } else if (filters.idNumber) {
+            queryParams.append("idNumber", filters.idNumber);
          }
-         // 当选择姓名时，使用对应的 id 发送请求
-         if (filters.name) {
-            queryParams.append("personnelId", filters.name);
-         }
+
          if (filters.dateRange && (filters.dateRange as dayjs.Dayjs[]).length === 2) {
             queryParams.append("startDate", (filters.dateRange[0] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss"));
             queryParams.append("endDate", (filters.dateRange[1] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss"));
-         }
-         if (filters.alarmLevel) {
-            queryParams.append("alarmLevel", filters.alarmLevel);
          }
          if (filters.handlingTimeRange && (filters.handlingTimeRange as dayjs.Dayjs[]).length === 2) {
             queryParams.append(
@@ -117,17 +140,23 @@ const AlarmDisplay: React.FC = () => {
          const response = await axios.get(`${config.backend.url}/history/alarms?${queryParams.toString()}`);
          setAlarmData(response.data || []);
       } catch (error) {
-         console.error("Error fetching alarm data:", error);
-         message.error("获取报警数据失败！");
+         if (error instanceof AxiosError && error.response?.status === 404) {
+            message.error("未找到该身份证号对应的人员");
+         } else {
+            console.error("Error fetching alarm data:", error);
+            message.error("获取报警数据失败！");
+         }
+      } finally {
+         setLoading(false);
       }
    };
 
    const handleReset = () => {
       setFilters({
          personnelId: null,
-         name: "",
+         name: null,
+         idNumber: "",
          dateRange: null,
-         alarmLevel: null,
          handlingTimeRange: null,
       });
       form.resetFields();
@@ -168,6 +197,15 @@ const AlarmDisplay: React.FC = () => {
    const initialColumns = [
       { title: "人员编号", dataIndex: "personnel_id", key: "personnelId" },
       { title: "姓名", dataIndex: "name", key: "name" },
+      {
+         title: "身份证号",
+         dataIndex: "id_number",
+         key: "id_number",
+         render: (text: string) => {
+            if (!text) return "";
+            return text.replace(/^(\d{6})(\d+)(\d{2})$/, "$1********$3");
+         },
+      },
       { title: "心率(次/分)", dataIndex: "heart_rate", key: "heartRate" },
       { title: "呼吸(次/分)", dataIndex: "breath_rate", key: "breathRate" },
       {
@@ -223,10 +261,16 @@ const AlarmDisplay: React.FC = () => {
             form={form}
             onValuesChange={(changedValues, allValues) => {
                if (changedValues.personnelId !== undefined) {
-                  allValues.name = "";
+                  allValues.name = null;
+                  allValues.idNumber = "";
                }
                if (changedValues.name !== undefined) {
                   allValues.personnelId = null;
+                  allValues.idNumber = "";
+               }
+               if (changedValues.idNumber !== undefined) {
+                  allValues.personnelId = null;
+                  allValues.name = null;
                }
                setFilters(allValues);
             }}
@@ -243,7 +287,7 @@ const AlarmDisplay: React.FC = () => {
                         }
                         options={personnelOptions}
                         allowClear
-                        disabled={!!filters.name}
+                        disabled={!!filters.name || !!filters.idNumber}
                      />
                   </Form.Item>
                </Col>
@@ -258,26 +302,25 @@ const AlarmDisplay: React.FC = () => {
                         }
                         options={nameOptions}
                         allowClear
-                        disabled={!!filters.personnelId}
+                        disabled={!!filters.personnelId || !!filters.idNumber}
                      />
                   </Form.Item>
                </Col>
                <Col span={5}>
-                  <Form.Item label='告警级别' name='alarmLevel'>
-                     <Select allowClear placeholder='请选择' disabled>
-                        <Select.Option key='1' value='1'>
-                           极度危险
-                        </Select.Option>
-                        <Select.Option key='2' value='2'>
-                           危险
-                        </Select.Option>
-                        <Select.Option key='3' value='3'>
-                           异常
-                        </Select.Option>
-                     </Select>
+                  <Form.Item label='身份证号' name='idNumber'>
+                     <Select
+                        showSearch
+                        placeholder='请选择身份证号'
+                        optionFilterProp='children'
+                        filterOption={(input, option) =>
+                           (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                        }
+                        options={idNumberOptions}
+                        allowClear
+                        disabled={!!filters.personnelId || !!filters.name}
+                     />
                   </Form.Item>
                </Col>
-               {/* 新增：处理时间筛选 */}
                <Col span={5}>
                   <Form.Item label='处理时间' name='handlingTimeRange'>
                      <RangePicker />
@@ -292,7 +335,7 @@ const AlarmDisplay: React.FC = () => {
             <Form.Item style={{ textAlign: "right" }}>
                {/* 将按钮居右 */}
                <Space>
-                  <Button type='primary' htmlType='submit' icon={<SearchOutlined />}>
+                  <Button type='primary' htmlType='submit' icon={<SearchOutlined />} loading={loading}>
                      查询
                   </Button>
                   <Button onClick={handleReset} icon={<ReloadOutlined />}>
