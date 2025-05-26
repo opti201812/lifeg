@@ -31,7 +31,14 @@ const PersonnelManagement: React.FC = () => {
       { title: "身份证号码", dataIndex: "id_number", key: "id_number" },
       { title: "职业", dataIndex: "occupation", key: "occupation" },
       { title: "年龄", dataIndex: "age", key: "age" },
-      { title: "性别", dataIndex: "gender", key: "gender" },
+      {
+         title: "性别",
+         dataIndex: "gender",
+         key: "gender",
+         render: (gender: string) => {
+            return gender === "male" ? "男" : "女";
+         },
+      },
       { title: "平均心率", dataIndex: "heart_rate", key: "heart_rate" },
       { title: "平均呼吸次数", dataIndex: "breath_rate", key: "breath_rate" },
       {
@@ -49,7 +56,7 @@ const PersonnelManagement: React.FC = () => {
          key: "action",
          render: (_: any, record: any) => (
             <div style={{ display: "flex", alignItems: "center" }}>
-               <Button onClick={() => navigate(`/personnel-management/${record.id}`)}>编辑</Button>
+               <Button onClick={() => navigate(`/dashboard/personnel-management/${record.id}`)}>编辑</Button>
             </div>
          ),
       },
@@ -58,7 +65,7 @@ const PersonnelManagement: React.FC = () => {
    return (
       <div style={settingSpace}>
          <h2>人员管理</h2>
-         <Button type='primary' onClick={() => navigate(`/personnel-management/new`)}>
+         <Button type='primary' onClick={() => navigate(`/dashboard/personnel-management/new`)}>
             新增人员
          </Button>
          <Table dataSource={personnelData} columns={columns} rowKey='id' />

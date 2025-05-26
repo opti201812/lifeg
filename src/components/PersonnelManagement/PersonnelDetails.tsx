@@ -66,7 +66,7 @@ const PersonnelDetails: React.FC = () => {
             await axios.post(`${config.backend.url}/personnel`, personnelData);
             message.success("添加人员成功");
          }
-         navigate("/personnel-management"); // Redirect back to personnel management
+         navigate("/dashboard/personnel-management"); // Redirect back to personnel management
       } catch (error) {
          console.error("Error saving personnel:", error);
          message.error("保存人员信息失败！");
@@ -129,7 +129,7 @@ const PersonnelDetails: React.FC = () => {
                   <Button type='primary' htmlType='submit'>
                      保存
                   </Button>{" "}
-                  <Button type='default' onClick={() => navigate("/personnel-management")}>
+                  <Button type='default' onClick={() => navigate("/dashboard/personnel-management")}>
                      返回
                   </Button>
                </Form.Item>

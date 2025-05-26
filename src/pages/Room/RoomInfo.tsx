@@ -55,11 +55,7 @@ const getTagInfo = (room: Room | undefined) => {
    if (!room) {
       return { text: "无数据", color: "gray" };
    }
-   if (!room.personnel_id) {
-      return { text: "无人", color: "gray" };
-   } else if (!room.enabled) {
-      return { text: "未设防", color: "red" };
-   } else if (isInRestrictedSchedule(room)) {
+   if (isInRestrictedSchedule(room)) {
       return { text: "搁置时段", color: "orange" };
    } else if (room.networkFailure) {
       return { text: "网络故障", color: "red" };

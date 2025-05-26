@@ -15,9 +15,10 @@ import config from "../../config";
 interface WeeklyDataSlideProps {
    roomInfo: { name: string; age: number; gender: string; roomId: number; personnelId?: number | null };
    roomId: number;
+   isActive: boolean;
 }
 
-const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo }) => {
+const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo, isActive }) => {
    const [dataDistance, setDataDistance] = React.useState<DataPoint[]>([]);
    const [dataHeartBeat, setDataHeartBeat] = React.useState<DataPoint[]>([]);
    const [dataBreathRate, setDataBreathRate] = React.useState<DataPoint[]>([]);
@@ -26,6 +27,9 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo }) => {
    const sevenDaysAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD HH:mm:ss");
 
    useEffect(() => {
+      if (!isActive) {
+         return;
+      }
       const fetchHistoricalData = async () => {
          if (!roomInfo?.personnelId) {
             console.log("No personnelId found for this room.");
@@ -51,16 +55,22 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo }) => {
             });
 
             setDataDistance(
-               response.data.map((item: any) => ({ date: new Date(item.time).getTime(), value: item.target_distance }))
+               response.data.map((item: any) => ({ date: new Date(item.time).getTime(), value: item.distance }))
             );
             setDataHeartBeat(
-               response.data.map((item: any) => ({ date: new Date(item.time).getTime(), value: item.heart_rate }))
+               response.data.map((item: any) => ({
+                  date: new Date(item.time).getTime(),
+                  value: item.bracelet_heart_rate || item.radar_heart_rate || item.below60_heart_rate_count,
+               }))
             );
             setDataBreathRate(
                response.data.map((item: any) => ({ date: new Date(item.time).getTime(), value: item.breath_rate }))
             );
             setDataEnvironment(
-               response.data.map((item: any) => ({ date: new Date(item.time).getTime(), value: item.environment }))
+               response.data.map((item: any) => ({
+                  date: new Date(item.time).getTime(),
+                  value: item.environment_interference,
+               }))
             );
             console.log("Refreshed weekly data");
          } catch (error) {
@@ -73,7 +83,7 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo }) => {
       const intervalId = setInterval(fetchHistoricalData, 30 * 1000); // 60 seconds * 1000 milliseconds
 
       return () => clearInterval(intervalId);
-   }, [roomInfo.roomId, roomInfo.personnelId]); // Re-fetch when roomId changes
+   }, [roomInfo.roomId, roomInfo.personnelId, isActive]); // Re-fetch when roomId changes
 
    const getLineOptions = (data: DataPoint[], seriesName: string) => {
       return {
@@ -113,6 +123,7 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo }) => {
          title={
             <RoomInfo roomName={roomInfo.name} age={roomInfo.age} gender={roomInfo.gender} room={roomData} type='周' />
          }
+         style={{ height: 600 }}
       >
          <Row gutter={16}>
             <Col span={6}>

@@ -70,7 +70,7 @@ const LicenseManagement: React.FC = () => {
       if (authCode) {
          setLoading(true); // 开始加载
          try {
-            const response = await axios.post(`${config.backend.url}/alertconfig/decrypt-license`, {
+            const response = await axios.post(`${config.backend.url}/v1/license/decrypt`, {
                licenseCode: authCode,
             });
             if (response.data.success) {
@@ -100,7 +100,7 @@ const LicenseManagement: React.FC = () => {
    const handleSubmit = async (values: any) => {
       if (authCode) {
          try {
-            const response = await axios.put(`${config.backend.url}/alertconfig`, {
+            const response = await axios.post(`${config.backend.url}/v1/license/update-license-code`, {
                licenseCode: authCode,
             });
             if (response.status === 200) {

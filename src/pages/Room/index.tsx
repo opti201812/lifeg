@@ -11,8 +11,15 @@ import { RootState } from "../../store/index.js";
 import { LeftOutlined, RightOutlined, DownOutlined } from "@ant-design/icons";
 import { updateRoomData } from "../../store/dataSlice";
 import RoomStatusSlide from "./RoomStatusSlide";
+import ArmPersonnelModal from "../../components/ArmPersonnelModal";
+import { useNavigate } from "react-router-dom";
 
-const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
+const RoomPage: React.FC<{
+   personnelId: number | null;
+   roomId: number | null;
+   associationId: string;
+   initialSlide: number;
+}> = ({ personnelId, roomId, associationId, initialSlide }) => {
    if (!roomId) return;
    const [roomInfo, setRoomInfo] = useState<{
       name: string;
@@ -20,7 +27,8 @@ const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
       gender: string;
       roomId: number;
       personnelId?: number | null;
-   }>({ name: "", age: 0, gender: "", roomId: 0, personnelId: 0 });
+      associationId: string;
+   }>({ name: "", age: 0, gender: "", roomId: 0, personnelId: personnelId, associationId: "" });
    const roomData = useSelector((state: RootState) => state.data.rooms.find((room) => room.id === roomId));
    const carouselRef = useRef<any>(null);
    const dispatch = useDispatch();
@@ -30,6 +38,8 @@ const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
    const [avgBreathRateIn5Minutes, setAvgBreathRateIn5Minutes] = useState<number>(0);
    const [form] = Form.useForm();
    const [personnelList, setPersonnelList] = useState<any[]>([]);
+   const [currentSlide, setCurrentSlide] = useState(initialSlide || 0);
+   const navigate = useNavigate();
 
    useEffect(() => {
       const fetchPersonnel = async () => {
@@ -68,10 +78,11 @@ const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
                age: personnelData?.age,
                gender: personnelData?.gender,
                roomId,
-               personnelId: roomData.personnel_id,
+               personnelId: personnelId,
+               associationId: associationId,
             });
 
-            setIsMonitoringEnabled(roomData.enabled);
+            setIsMonitoringEnabled(!associationId);
          } catch (error) {
             console.error("Error fetching room data:", error);
             message.error("获取房间信息失败！");
@@ -150,7 +161,7 @@ const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
       }
    };
 
-   const toggleMonitoring = async (enabled: boolean, personnelId?: number) => {
+   const toggleMonitoring = async (enabled: boolean) => {
       try {
          await axios.put(`${config.backend.url}/rooms/${roomId}`, { enabled, personnel_id: personnelId });
          setIsMonitoringEnabled(enabled);
@@ -166,226 +177,121 @@ const RoomPage: React.FC<{ roomId: number | null }> = ({ roomId }) => {
       }
    };
 
-   const onFinish = async (values: any) => {
-      const { personnel_name, heartRate, breathRate, heartRateResting, breathRateResting } = values;
-      // 将now转换为2024-11-18 12:06:35格式
-      const formattedNow = new Date().toLocaleString("zh-CN", {
-         year: "numeric",
-         month: "2-digit",
-         day: "2-digit",
-         hour: "2-digit",
-         minute: "2-digit",
-         second: "2-digit",
-      });
-      const payload = {
-         ...values,
-         id_number: values.id_number || "",
-         name: personnel_name,
-         breath_rate: breathRate,
-         heart_rate: heartRate,
-         heart_rate_resting: heartRateResting,
-         breath_rate_resting: breathRateResting,
-         is_out: false,
-         remark: formattedNow + " - " + personnel_name,
-      };
-
-      try {
-         let personnelId;
-         if (values.personnel_id) {
-            await axios.put(`${config.backend.url}/personnel/${values.personnel_id}`, payload);
-            personnelId = values.personnel_id;
-            message.success("数据更新成功");
-         } else {
-            const response = await axios.post(`${config.backend.url}/personnel`, payload);
-            personnelId = response.data.id;
-            message.success("新增人员成功");
-         }
-         setIsModalVisible(false);
-         toggleMonitoring(true, personnelId);
-      } catch (error) {
-         console.error("更新数据失败:", error);
-         message.error("更新数据失败，请重试");
+   useEffect(() => {
+      // 当 initialSlide prop 发生变化时，或者组件首次加载且 initialSlide 有效时
+      // 使用 goTo 方法确保轮播到正确的 initialSlide
+      // 第二个参数 true 表示禁用动画，实现立即跳转
+      if (carouselRef.current && typeof initialSlide === "number") {
+         carouselRef.current.goTo(initialSlide, true);
+         // 同步内部的 currentSlide 状态，尽管 Carousel 内部也会更新
+         // 但这样做可以保持我们自己状态的一致性，以防万一需要基于此状态做其他操作
+         setCurrentSlide(initialSlide);
       }
-   };
+   }, [initialSlide]); // 依赖数组中只有 initialSlide
 
-   const createFormItem = (label: string, name: string) => (
-      <Form.Item
-         label={label}
-         name={name}
-         key={name}
-         rules={[
-            { required: true, message: "请输入" + label },
-            { type: "number", message: "请输入数字" },
-         ]}
-      >
-         <InputNumber />
-      </Form.Item>
-   );
+   useEffect(() => {
+      // 需要确保离开房间页面时重置标题
+      return () => {
+         document.title = "人员总览"; // 或使用全局状态管理
+      };
+   }, []);
 
-   const personnelMenu = (
-      <Menu
-         style={{ height: "50vh", overflowY: "auto", marginLeft: "5em" }}
-         onClick={(info) => {
-            const selectedPerson = personnelList.find((person) => person.name === info.key);
-            if (selectedPerson) {
-               const { heart_rate, heart_rate_resting, breath_rate, breath_rate_resting } = selectedPerson;
-               form.setFieldsValue({
-                  personnel_id: selectedPerson.id,
-                  personnel_name: selectedPerson.name,
-                  ...getInitialHeartAndBreathRate(
-                     heart_rate,
-                     heart_rate_resting,
-                     breath_rate,
-                     breath_rate_resting,
-                     avgHeartRateIn5Minutes,
-                     avgBreathRateIn5Minutes
-                  ),
-               });
-            } else {
-               form.setFieldsValue({
-                  personnel_id: null,
-               });
-            }
-            form.setFieldsValue({ personnel_name: info.key });
-         }}
-      >
-         {personnelList.map((person) => (
-            <Menu.Item key={person.name}>{person.name}</Menu.Item>
-         ))}
-      </Menu>
-   );
-   const [currentSlide, setCurrentSlide] = useState(0);
    return (
       <div style={{ margin: "0 auto", maxWidth: "1000px", width: "100%", height: "100%" }}>
-         {!isMonitoringEnabled ? (
-            <div
-               style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  height: "70vh",
-               }}
-            >
+         <Carousel
+            autoplay={false}
+            autoplaySpeed={10000}
+            ref={carouselRef}
+            // initialSlide={initialSlide} // 可以移除，因为我们通过 useEffect 和 goTo 控制
+            afterChange={(current) => {
+               // 这个回调仍然有用，用于响应用户手动滑动轮播图
+               setCurrentSlide(current);
+            }}
+         >
+            {/* 为每个 Slide 添加唯一的 key prop，这有助于 React 正确地更新它们 */}
+            <RoomStatusSlide
+               personnelId={personnelId}
+               roomInfo={roomInfo}
+               key={`slide-room-status-${roomId}-${personnelId}`}
+               isActive={currentSlide === 0}
+            />
+            <DailyDataSlide
+               roomId={roomId}
+               roomInfo={roomInfo}
+               key={`slide-daily-data-${roomId}`}
+               isActive={currentSlide === 1}
+            />
+            <WeeklyDataSlide
+               roomId={roomId}
+               roomInfo={roomInfo}
+               key={`slide-weekly-data-${roomId}`}
+               isActive={currentSlide === 2}
+            />
+         </Carousel>
+
+         <div style={{ marginTop: "10px", textAlign: "center" }}>
+            <Button
+               icon={<LeftOutlined />}
+               onClick={() => carouselRef.current?.goTo((currentSlide - 1 + 3) % 3)}
+               style={{ marginRight: "10px" }}
+            />
+            <Button icon={<RightOutlined />} onClick={() => carouselRef.current?.goTo((currentSlide + 1) % 3)} />
+         </div>
+
+         <div style={{ display: "flex", gap: "16px" }}>
+            {!isMonitoringEnabled ? (
                <Button
                   type='primary'
-                  onClick={handleToggleMonitoring}
-                  style={{ height: 48, width: 160, fontSize: 24, marginBottom: 20 }}
+                  onClick={() => setIsModalVisible(true)}
+                  style={{ height: 48, width: 160, fontSize: 24 }}
                >
-                  设防
+                  变更
                </Button>
-               <p style={{ margin: 0 }}>当前房间未设防</p>
-            </div>
-         ) : (
-            <>
-               <Carousel autoplay={false} autoplaySpeed={10000} ref={carouselRef}>
-                  {currentSlide === 0 && <RoomStatusSlide roomId={roomId} roomInfo={roomInfo} />}
-                  {currentSlide === 1 && <DailyDataSlide roomId={roomId} roomInfo={roomInfo} />}
-                  {currentSlide === 2 && <WeeklyDataSlide roomId={roomId} roomInfo={roomInfo} />}
-               </Carousel>
-               <div style={{ marginTop: "10px", textAlign: "center" }}>
-                  <Button
-                     icon={<LeftOutlined />}
-                     onClick={() => setCurrentSlide((prev) => (prev + 2) % 3)}
-                     style={{ marginRight: "10px" }}
-                  />
-                  <Button icon={<RightOutlined />} onClick={() => setCurrentSlide((prev) => (prev + 1) % 3)} />
-               </div>
-               <div style={{ textAlign: "center", marginTop: "10px" }}>
-                  <Button
-                     type='primary'
-                     danger
-                     onClick={handleToggleMonitoring}
-                     size='large'
-                     style={{ height: 48, width: 160, fontSize: 24, marginBottom: 20 }}
-                  >
-                     撤防
-                  </Button>
-               </div>
-            </>
-         )}
+            ) : (
+               <Button
+                  type='primary'
+                  danger
+                  onClick={() => setIsModalVisible(true)}
+                  style={{ height: 48, width: 160, fontSize: 24 }}
+               >
+                  变更
+               </Button>
+            )}
+            <Button
+               type='default'
+               danger
+               onClick={() => {
+                  Modal.confirm({
+                     title: "确认解除关联",
+                     content: "确定要解除当前人员与房间的关联吗？",
+                     okText: "确认",
+                     cancelText: "取消",
+                     onOk: async () => {
+                        try {
+                           await axios.delete(`${config.backend.url}/associations/${associationId}`);
+                           message.success("解除关联成功");
+                           navigate("/overview"); // 返回人员总览
+                        } catch (error) {
+                           console.error("解除关联失败:", error);
+                           message.error("解除关联失败");
+                        }
+                     },
+                  });
+               }}
+               style={{ height: 48, width: 160, fontSize: 24 }}
+            >
+               解除
+            </Button>
+         </div>
 
-         <Modal
-            title='人员信息和检测基准'
-            open={isModalVisible}
+         <ArmPersonnelModal
+            visible={isModalVisible}
+            initialValues={{ associationId: associationId }}
             onCancel={() => setIsModalVisible(false)}
-            footer={[
-               <Button key='back' onClick={() => setIsModalVisible(false)}>
-                  取消
-               </Button>,
-               <Button key='submit' type='primary' onClick={() => form.submit()}>
-                  确定
-               </Button>,
-            ]}
-         >
-            <Form form={form} onFinish={onFinish}>
-               <Row gutter={16}>
-                  <Col span={12}>
-                     <Dropdown overlay={personnelMenu} trigger={["click"]}>
-                        <Form.Item label='人员姓名' name='personnel_name'>
-                           <Input
-                              style={{ width: 200 }}
-                              placeholder='选择或输入人员'
-                              onBlur={(event) => {
-                                 const value = event.target.value;
-                                 const selectedPerson = personnelList.find((person) => person.name === value);
-                                 if (selectedPerson) {
-                                    form.setFieldsValue({
-                                       personnel_id: selectedPerson.id,
-                                       personnel_name: selectedPerson.name,
-                                       heartRate: selectedPerson.heart_rate,
-                                       heartRateResting: selectedPerson.heart_rate_resting,
-                                       breathRate: selectedPerson.breath_rate,
-                                       breathRateResting: selectedPerson.breath_rate_resting,
-                                    });
-                                 } else {
-                                    form.setFieldsValue({
-                                       personnel_id: null,
-                                    });
-                                 }
-                              }}
-                              suffix={<DownOutlined />}
-                           />
-                        </Form.Item>
-                     </Dropdown>
-                  </Col>
-                  <Col span={6}>
-                     <Form.Item label='personnel_id' name='personnel_id' hidden>
-                        <Input />
-                     </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                     <Form.Item label='id_number' name='id_number' hidden>
-                        <Input />
-                     </Form.Item>
-                  </Col>
-               </Row>
-               <Row gutter={16}>
-                  <Col span={12}>{createFormItem("平时心率", "heartRate")}</Col>
-                  <Col span={12}>{createFormItem("平时呼吸率", "breathRate")}</Col>
-               </Row>
-               <Row gutter={16}>
-                  <Col span={12}>{createFormItem("静息心率下限", "heartRateResting")}</Col>
-                  <Col span={12}>{createFormItem("静息呼吸率下限", "breathRateResting")}</Col>
-               </Row>
-               <Row gutter={16}>
-                  <Col span={12}>
-                     <Form.Item name='remark' hidden>
-                        <Input />
-                     </Form.Item>
-                  </Col>
-               </Row>
-            </Form>
-            <p style={{ fontSize: 13, color: "gray" }}>
-               {`供参考：过去5分钟平均心率为${avgHeartRateIn5Minutes || "-"}次/分，平均呼吸率为${
-                  avgBreathRateIn5Minutes || "-"
-               }次/分`}
-            </p>
-            <p style={{ fontSize: 13, color: "gray" }}>1、正常人的心率范围在60-100，呼吸范围12-30；</p>
-            <p style={{ fontSize: 13, color: "gray" }}>
-               2、静息是指在休息状态（如睡眠状态），其设定值应该低于各自下限值
-            </p>
-         </Modal>
+            onSubmit={() => setIsModalVisible(false)}
+            // 动态设置title
+            title={isMonitoringEnabled ? "撤防" : "设防"}
+         />
       </div>
    );
 };

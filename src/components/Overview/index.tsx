@@ -113,11 +113,7 @@ const Overview: React.FC = () => {
 
    const getTagInfo = useCallback(
       (room: Room) => {
-         if (!room.personnel_id) {
-            return { text: "无人", color: "gray" };
-         } else if (!room.enabled) {
-            return { text: "未设防", color: "red" };
-         } else if (isInRestrictedSchedule(room)) {
+         if (isInRestrictedSchedule(room)) {
             return { text: "搁置时段", color: "orange" };
          } else if (room.networkFailure) {
             return { text: "网络故障", color: "red" };
@@ -154,7 +150,7 @@ const Overview: React.FC = () => {
       <div>
          <h2>总览</h2>
          {selectedRoomId ? (
-            <RoomPage roomId={selectedRoomId} />
+            <RoomPage personnelId={null} roomId={selectedRoomId} associationId={""} initialSlide={0} />
          ) : (
             <Row gutter={[16, 32]} justify='center' align='middle'>
                {rooms?.map((room) => (

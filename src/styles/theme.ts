@@ -6,6 +6,11 @@ export const GlobalStyle = createGlobalStyle`
     padding: 0;
     font-family: 'Roboto', sans-serif;
   }
+  @keyframes blink {
+    0% { background-color: #ffcccc; }
+    50% { background-color: #ff9999; }
+    100% { background-color: #ffcccc; }
+  }
 `;
 
 export const theme = {

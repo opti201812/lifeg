@@ -1,6 +1,6 @@
 // components/HistoryData/index.tsx
 import React, { useState, useEffect } from "react";
-import { Table, Button, Input, DatePicker, Select, Space, message, Form, Row, Col } from "antd";
+import { Table, Button, Input, DatePicker, Select, Space, message, Form, Row, Col, Tooltip } from "antd";
 import { SearchOutlined, ReloadOutlined, DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import axios, { AxiosError } from "axios";
@@ -85,8 +85,8 @@ const HistoryData: React.FC = () => {
             const idNumbers = response.data
                .filter((person: any) => person.id_number && person.id_number.trim() !== "")
                .map((person: any) => ({
-                  value: person.id_number,
-                  key: person.id_number,
+                  value: person.id,
+                  key: person.id,
                   label: person.id_number,
                }));
             setIdNumberOptions(idNumbers);
@@ -112,12 +112,25 @@ const HistoryData: React.FC = () => {
       try {
          const queryParams = new URLSearchParams();
 
+         const selectedPersonnel = {
+            name: "",
+            id_number: "",
+         };
          if (filters.personnelId) {
             queryParams.append("personnelId", filters.personnelId.toString());
+            selectedPersonnel.name = nameOptions.find((p) => p.value === filters.personnelId?.toString())?.label || "";
+            selectedPersonnel.id_number =
+               idNumberOptions.find((p) => p.value === filters.personnelId?.toString())?.label || "";
          } else if (filters.name) {
             queryParams.append("personnelId", filters.name.toString());
+            selectedPersonnel.name = nameOptions.find((p) => p.value === filters.name?.toString())?.label || "";
+            selectedPersonnel.id_number =
+               idNumberOptions.find((p) => p.value === filters.name?.toString())?.label || "";
          } else if (filters.idNumber) {
-            queryParams.append("idNumber", filters.idNumber);
+            queryParams.append("personnelId", filters.idNumber.toString());
+            selectedPersonnel.name = nameOptions.find((p) => String(p.value) === filters.idNumber)?.label || "";
+            selectedPersonnel.id_number =
+               idNumberOptions.find((p) => String(p.value) === filters.idNumber)?.label || "";
          }
 
          if (filters.dateRange && (filters.dateRange as dayjs.Dayjs[]).length === 2) {
@@ -126,7 +139,12 @@ const HistoryData: React.FC = () => {
          }
 
          const response = await axios.get(`${config.backend.url}/history?${queryParams.toString()}`);
-         setHistoricalData(response.data || []);
+         const historicalDataWithPersonInfo = response.data.map((data: any) => ({
+            ...data,
+            name: selectedPersonnel.name,
+            id_number: selectedPersonnel.id_number,
+         }));
+         setHistoricalData(historicalDataWithPersonInfo);
       } catch (error) {
          if (error instanceof AxiosError && error.response?.status === 404) {
             message.error("未找到该身份证号对应的人员");
@@ -152,35 +170,56 @@ const HistoryData: React.FC = () => {
 
    const handleExport = () => {
       const newData = historicalData.map((item: any) => {
+         /*
+         {
+    "time": "2025-05-26 12:54:12",
+    "person_id": "15",
+    "bracelet_heart_rate": "",
+    "radar_heart_rate": "124",
+    "breath_rate": "21",
+    "distance": "106.67",
+    "confidence": "65",
+    "environment_interference": "97",
+    "below60_heart_rate_count": "",
+    "alarm_status": "1",
+    "fall_status": "7",
+    "dynamic_status": "",
+    "battery_voltage": "",
+    "tamper_status": "",
+    "button_status": "",
+    "personnelId": 15
+}
+         */
          const {
             time,
-            room_id,
-            personnel_id,
+            person_id,
+            bracelet_heart_rate,
+            radar_heart_rate,
             breath_rate,
-            breathRateMax,
-            breathRateMin,
-            heart_rate,
-            heartRateMax,
-            heartRateMin,
-            u60heart_rate,
-            u60heartRateMax,
-            u60heartRateMin,
-            target_distance,
-            pose,
-            targetDistanceMax,
-            targetDistanceMin,
-            environment,
+            distance,
+            confidence,
+            environment_interference,
+            below60_heart_rate_count,
+            alarm_status,
+            fall_status,
+            dynamic_status,
+            battery_voltage,
+            tamper_status,
+            button_status,
+            personnelId,
          } = item;
 
          return {
-            人员编号: personnel_id,
-            房间编号: room_id,
-            心率: heart_rate,
+            日期时间: dayjs(time).format("YYYY-MM-DD HH:mm:ss"), // 转为日期时间格式
+            人员编号: personnelId,
+            手环心率: bracelet_heart_rate,
+            雷达心率: radar_heart_rate,
             呼吸: breath_rate,
-            距离: target_distance,
-            体位: pose,
-            环境: environment,
-            日期时间: time,
+            距离: distance,
+            环境干扰: environment_interference,
+            SOS状态: button_status,
+            手环状态: tamper_status,
+            电池电压: battery_voltage,
          };
       });
       // Export to Excel
@@ -203,7 +242,7 @@ const HistoryData: React.FC = () => {
    };
 
    const columns = [
-      { title: "人员编号", dataIndex: "personnel_id", key: "personnel_id" },
+      { title: "人员编号", dataIndex: "person_id", key: "personnel_id" },
       { title: "姓名", dataIndex: "name", key: "name" },
       {
          title: "身份证号",
@@ -215,27 +254,36 @@ const HistoryData: React.FC = () => {
             return text.replace(/^(\d{6})(\d+)(\d{2})$/, "$1********$3");
          },
       },
-      { title: "心率(次/分)", dataIndex: "heart_rate", key: "heart_rate" },
-      { title: "呼吸(次/分)", dataIndex: "breath_rate", key: "breath_rate" },
       {
-         title: "距离(米)",
-         dataIndex: "target_distance",
-         key: "target_distance",
-         render: (text: string, record: any) => {
-            return (parseInt(text) / 100).toFixed(2);
-         },
+         title: "手环心率",
+         dataIndex: "bracelet_heart_rate",
+         key: "bracelet_heart_rate",
+         render: (value: number) => value ?? "N/A",
+      },
+      {
+         title: "手环报警",
+         dataIndex: "tamper_status",
+         key: "tamper_status",
+         render: (alarm: boolean) => <span style={{ color: alarm ? "red" : "inherit" }}>{alarm ? "是" : "否"}</span>,
+      },
+      {
+         title: <Tooltip title='次/分钟'>雷达心率</Tooltip>,
+         // heart_rate 或 radar_heart_rate
+         dataIndex: "radar_heart_rate",
+         key: "heart_rate",
+      },
+      {
+         title: <Tooltip title='次/分钟'>雷达呼吸</Tooltip>,
+         dataIndex: "breath_rate",
+         key: "breath_rate",
+      },
+      {
+         title: <Tooltip title='米（雷达测量距离）'>雷达距离</Tooltip>,
+         dataIndex: "distance",
+         key: "distance",
       },
       { title: "体位", dataIndex: "pose", key: "pose" },
-      { title: "环境干扰", dataIndex: "environment", key: "environment" },
-      // Assuming 'distance' is 'target_distance' in the API response
-      // {
-      //    title: "是否告警",
-      //    dataIndex: "is_alarm", // Assuming 'isAlarm' is 'is_alarm' in the API response
-      //    key: "is_alarm",
-      //    render: (isAlarm: boolean) => (
-      //       <span style={{ color: isAlarm ? "red" : "inherit" }}>{isAlarm ? "是" : "否"}</span>
-      //    ),
-      // },
+      { title: "环境干扰", dataIndex: "environment_interference", key: "environment" },
       {
          title: "日期时间",
          dataIndex: "time",

@@ -46,9 +46,9 @@ const Login: React.FC = () => {
                );
 
                if (response.data.user.role === "admin") {
-                  navigate("/overview");
+                  navigate("/dashboard/new-overview");
                } else {
-                  navigate("/room");
+                  navigate("/dashboard/room");
                }
             } else {
                dispatch(logout());
@@ -59,7 +59,7 @@ const Login: React.FC = () => {
       };
 
       checkAuth();
-   }, [dispatch]);
+   }, []);
 
    const handleLogin = async (values: any) => {
       try {
@@ -84,9 +84,9 @@ const Login: React.FC = () => {
             );
 
             if (response.data.user.role === "admin") {
-               navigate("/overview");
+               navigate("/dashboard/new-overview");
             } else {
-               navigate("/room");
+               navigate("/dashboard/room");
             }
          } else {
             message.error(response.data.message || "Login failed");

@@ -115,24 +115,10 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, editingPersonnel })
             {createFormItem("下限值", ["breathRateLowerValue"], "次/分")}
          </Row>
          <Row gutter={16}>
-            <Col span={12}>
-               <Form.Item
-                  label='静息心率下限'
-                  name={["heart_rate_resting"]}
-                  rules={[{ required: false, message: "请输入静息心率下限" }]}
-               >
-                  <Input type='number' addonAfter='次/分' />
-               </Form.Item>
-            </Col>
-            <Col span={12}>
-               <Form.Item
-                  label='静息呼吸频率下限'
-                  name={["breath_rate_resting"]}
-                  rules={[{ required: false, message: "请输入静息呼吸频率下限" }]}
-               >
-                  <Input type='number' addonAfter='次/分' />
-               </Form.Item>
-            </Col>
+            {createFormItem("静息心率下限比", ["restHeartBeatRatioLower"], "%", true)}
+            {createFormItem("静息心率值", ["heartRateRestingValue"], "次/分")}
+            {createFormItem("静息呼吸频率下限比", ["restBreathRatioLower"], "%", true)}
+            {createFormItem("静息呼吸频率值", ["breathRateRestingValue"], "次/分")}
          </Row>
          <Row gutter={16}>
             <Col span={12}>

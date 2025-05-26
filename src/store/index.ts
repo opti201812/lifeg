@@ -19,7 +19,7 @@ setInterval(() => {
    const { data } = store.getState();
 
    const expiredAlarms = data.alarms.filter(
-      (alarm) => currentTime - (alarm.createTimeStamp || Date.now()) > alarmExpirationTime
+      (alarm) => currentTime - (alarm.timeStamp || alarm.createTimeStamp || Date.now()) > alarmExpirationTime
    );
 
    if (expiredAlarms.length > 0) {

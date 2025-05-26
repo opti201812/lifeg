@@ -14,9 +14,10 @@ import { RootState } from "../../store";
 interface DailyDataSlideProps {
    roomInfo: { name: string; age: number; gender: string; roomId: number; personnelId?: number | null };
    roomId: number;
+   isActive: boolean;
 }
 
-const DailyDataSlide: React.FC<DailyDataSlideProps> = ({ roomInfo }) => {
+const DailyDataSlide: React.FC<DailyDataSlideProps> = ({ roomInfo, isActive }) => {
    const [dataDistance, setDataDistance] = React.useState<DataPoint[]>([]);
    const [dataHeartBeat, setDataHeartBeat] = React.useState<DataPoint[]>([]);
    const [dataBreathRate, setDataBreathRate] = React.useState<DataPoint[]>([]);
@@ -24,6 +25,9 @@ const DailyDataSlide: React.FC<DailyDataSlideProps> = ({ roomInfo }) => {
    const roomData = useSelector((state: RootState) => state.data.rooms.find((room) => room.id === roomInfo.roomId)); // Get room data from Redux store
 
    useEffect(() => {
+      if (!isActive) {
+         return;
+      }
       // Fetch historical data for the last 24 hours from the API
       const fetchHistoricalData = async () => {
          try {
@@ -53,10 +57,10 @@ const DailyDataSlide: React.FC<DailyDataSlideProps> = ({ roomInfo }) => {
 
             const processedData = response.data.map((item: any) => ({
                date: item.time,
-               distance: item.target_distance / 100, // Convert to meters if needed
-               heartbeat: item.heart_rate,
+               distance: item.distance / 100, // Convert to meters if needed
+               heartbeat: item.bracelet_heart_rate || item.radar_heart_rate || item.below60_heart_rate_count,
                breathing: item.breath_rate,
-               environment: item.environment,
+               environment: item.environment_interference,
             }));
             setDataDistance(processedData.map((item: any) => ({ date: item.date, value: item.distance })));
             setDataHeartBeat(processedData.map((item: any) => ({ date: item.date, value: item.heartbeat })));
@@ -75,7 +79,7 @@ const DailyDataSlide: React.FC<DailyDataSlideProps> = ({ roomInfo }) => {
 
       // 清理函數，在組件卸載時清除定時器
       return () => clearInterval(intervalId);
-   }, [roomInfo.roomId]); // Re-fetch when roomId changes
+   }, [roomInfo.roomId, isActive]); // Re-fetch when roomId changes
 
    const getLineOptions = (data: DataPoint[], seriesName: string) => {
       // 计算最近 24 小时的时间范围
@@ -119,6 +123,7 @@ const DailyDataSlide: React.FC<DailyDataSlideProps> = ({ roomInfo }) => {
          title={
             <RoomInfo roomName={roomInfo.name} age={roomInfo.age} gender={roomInfo.gender} room={roomData} type='日' />
          }
+         style={{ height: 600 }}
       >
          <Row gutter={16}>
             <Col span={6}>

@@ -21,11 +21,11 @@ const RoomInfoFoot: React.FC<RoomInfoFootProps> = ({ lastUpdate, onDisarmClick, 
       >
          <p style={{ textAlign: "left", fontSize: "12px", color: "#999" }}>体位姿态: {pose || "-"}</p>
 
-         {onDisarmClick && (
-            <Button type='primary' danger size='large' onClick={onDisarmClick} style={{ marginTop: 4, width: 160 }}>
+         {/* {onDisarmClick && (
+            <Button type='primary' danger size='middle' onClick={onDisarmClick} style={{ marginTop: 4, width: 120 }}>
                撤防
             </Button>
-         )}
+         )} */}
          <p style={{ textAlign: "right", fontSize: "12px", color: "#999" }}>
             数据更新于: {lastUpdate ? dayjs(lastUpdate).format("YYYY-MM-DD HH:mm:ss") : "-/-/-"}
          </p>

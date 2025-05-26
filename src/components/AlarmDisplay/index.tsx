@@ -1,7 +1,7 @@
 // components/AlarmDisplay/index.tsx
 
 import React, { useState, useEffect } from "react";
-import { Table, Button, Input, DatePicker, Select, Space, message, Form, Row, Col } from "antd";
+import { Table, Button, Input, DatePicker, Select, Space, message, Form, Row, Col, Tooltip } from "antd";
 import { SearchOutlined, ReloadOutlined, DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import axios, { AxiosError } from "axios";
@@ -79,8 +79,8 @@ const AlarmDisplay: React.FC = () => {
             const idNumbers = response.data
                .filter((person: any) => person.id_number && person.id_number.trim() !== "")
                .map((person: any) => ({
-                  value: person.id_number,
-                  key: person.id_number,
+                  value: person.id,
+                  key: person.id,
                   label: person.id_number,
                }));
             setIdNumberOptions(idNumbers);
@@ -114,12 +114,25 @@ const AlarmDisplay: React.FC = () => {
       try {
          const queryParams = new URLSearchParams();
 
+         const selectedPersonnel = {
+            name: "",
+            id_number: "",
+         };
          if (filters.personnelId) {
             queryParams.append("personnelId", filters.personnelId.toString());
+            selectedPersonnel.name = nameOptions.find((p) => p.value === filters.personnelId)?.label || "";
+            selectedPersonnel.id_number =
+               idNumberOptions.find((p) => p.value === filters.personnelId?.toString())?.label || "";
          } else if (filters.name) {
             queryParams.append("personnelId", filters.name.toString());
+            selectedPersonnel.name = nameOptions.find((p) => p.value === filters.name)?.label || "";
+            selectedPersonnel.id_number =
+               idNumberOptions.find((p) => p.value === filters.name?.toString())?.label || "";
          } else if (filters.idNumber) {
-            queryParams.append("idNumber", filters.idNumber);
+            queryParams.append("personnelId", filters.idNumber.toString());
+            selectedPersonnel.name = nameOptions.find((p) => String(p.value) === filters.idNumber)?.label || "";
+            selectedPersonnel.id_number =
+               idNumberOptions.find((p) => String(p.value) === filters.idNumber)?.label || "";
          }
 
          if (filters.dateRange && (filters.dateRange as dayjs.Dayjs[]).length === 2) {
@@ -138,7 +151,14 @@ const AlarmDisplay: React.FC = () => {
          }
 
          const response = await axios.get(`${config.backend.url}/history/alarms?${queryParams.toString()}`);
-         setAlarmData(response.data || []);
+         // 从 personnelOptions、nameOptions、idNumberOptions 中查找当前人员的姓名、身份证号码，然后与response.data进行合并
+
+         const alarmDataWithPersonInfo = response.data.map((alarm: any) => ({
+            ...alarm,
+            name: selectedPersonnel.name,
+            id_number: selectedPersonnel.id_number,
+         }));
+         setAlarmData(alarmDataWithPersonInfo);
       } catch (error) {
          if (error instanceof AxiosError && error.response?.status === 404) {
             message.error("未找到该身份证号对应的人员");
@@ -163,20 +183,39 @@ const AlarmDisplay: React.FC = () => {
    };
 
    const handleExport = () => {
-      // Implement your export logic here (e.g., generate CSV or Excel file)
+      /*
+      {
+    "id": "1748077768293-pcgbv5350",
+    "room_id": "",
+    "personnel_id": "15",
+    "heart_rate": "152",
+    "breath_rate": "",
+    "distance": "240",
+    "pose": "",
+    "environment": "20",
+    "alarm_level": "",
+    "handler_id": "",
+    "handling_method": "",
+    "handling_time": "",
+    "create_date": "2025-05-24T09:09:14.804Z",
+    "update_date": "",
+    "personnelId": null
+}
+      */
       const newData = alarmData.map((item: any) => ({
-         ID: item.id,
-         房间编号: item.room_id,
          人员编号: item.personnel_id,
+         姓名: item.name,
+         身份证号: item.id_number,
          心率: item.heart_rate,
-         呼吸频率: item.breath_rate,
-         距离: item.distance,
+         呼吸: item.breath_rate,
+         雷达距离: (parseInt(item.distance) / 100).toFixed(2),
+         报警: item.alarm_level ? "是" : "否",
          体位: item.pose,
          环境: item.environment,
-         报警等级: item.alarm_level,
-         处理时间: item.handling_time,
-         处理方式: item.handling_method,
+         告警级别: item.alarm_level,
+         报警时间: dayjs(item.create_date).format("YYYY-MM-DD HH:mm:ss"),
       }));
+
       const ws = XLSX.utils.json_to_sheet(newData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Alarm Data");
@@ -201,29 +240,38 @@ const AlarmDisplay: React.FC = () => {
          title: "身份证号",
          dataIndex: "id_number",
          key: "id_number",
-         render: (text: string) => {
-            if (!text) return "";
-            return text.replace(/^(\d{6})(\d+)(\d{2})$/, "$1********$3");
-         },
+         render: (text: string) => text?.replace(/^(\d{6})(\d+)(\d{2})$/, "$1********$3") || "",
       },
-      { title: "心率(次/分)", dataIndex: "heart_rate", key: "heartRate" },
-      { title: "呼吸(次/分)", dataIndex: "breath_rate", key: "breathRate" },
       {
-         title: "距离(米)",
+         title: "手环报警",
+         dataIndex: "button_status",
+         key: "button_status",
+         render: (alarm: boolean) => <span style={{ color: alarm ? "red" : "inherit" }}>{alarm ? "是" : "否"}</span>,
+      },
+      {
+         title: <Tooltip title='次/分钟'>心率</Tooltip>,
+         dataIndex: "heart_rate",
+         key: "radar_heart_rate",
+      },
+      {
+         title: <Tooltip title='次/分钟'>呼吸</Tooltip>,
+         dataIndex: "breath_rate",
+         key: "breath_rate",
+      },
+      {
+         title: <Tooltip title='米（雷达测量距离）'>雷达距离</Tooltip>,
          dataIndex: "distance",
          key: "distance",
-         render: (text: string) => {
-            return text ? (parseInt(text) / 100).toFixed(2) : "";
-         },
+         render: (text: string) => (text ? (parseInt(text) / 100).toFixed(1) : ""),
       },
       { title: "体位", dataIndex: "pose", key: "pose" },
       { title: "环境干扰", dataIndex: "environment", key: "environment" },
       {
          title: "告警级别",
          dataIndex: "alarm_level",
-         key: "alarmLevel",
-         render: (alarmLevel: string) => {
-            switch (alarmLevel) {
+         key: "alarm_level",
+         render: (level: string) => {
+            switch (level) {
                case "1":
                   return "极度危险";
                case "2":
@@ -231,22 +279,22 @@ const AlarmDisplay: React.FC = () => {
                case "3":
                   return "异常";
                default:
-                  return "无";
+                  return "-";
             }
          },
       },
-      { title: "处理方法", dataIndex: "handling_method", key: "handlingMethod" },
-      {
-         title: "处理时间",
-         dataIndex: "handling_time",
-         key: "handlingTime",
-         render: (handlingTime: string) => (handlingTime ? dayjs(handlingTime).format("YYYY-MM-DD HH:mm:ss") : ""),
-      },
+      // { title: "处理方法", dataIndex: "handling_method", key: "handlingMethod" },
+      // {
+      //    title: "处理时间",
+      //    dataIndex: "handling_time",
+      //    key: "handlingTime",
+      //    render: (time: string) => (time ? dayjs(time).format("YYYY-MM-DD HH:mm:ss") : ""),
+      // },
       {
          title: "告警时间",
          dataIndex: "create_date",
          key: "dateTime",
-         render: (dateTime: string) => dayjs(dateTime).format("YYYY-MM-DD HH:mm:ss"),
+         render: (time: string) => dayjs(time).format("YYYY-MM-DD HH:mm:ss"),
       },
    ];
 
@@ -351,7 +399,7 @@ const AlarmDisplay: React.FC = () => {
             </Form.Item>
          </Form>
 
-         <Table dataSource={alarmData} columns={columns} key={"id"} />
+         <Table dataSource={alarmData} columns={columns} key={"id"} rowKey={"id"} />
       </div>
    );
 };

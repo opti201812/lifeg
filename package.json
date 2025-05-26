@@ -1,14 +1,14 @@
 {
   "name": "life-guard",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A Life Guard application with user management, permission management, and alarm display features.",
   "main": "src/index.tsx",
   "scripts": {
     "start": "REACT_APP_ENVIRONMENT_THRESHOLD=1 REACT_APP_BACKEND_URL=http://localhost:3030/api react-scripts start",
-    "build:dev": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/client/build' react-scripts build",
+    "build:dev": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/dist/client/build' react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "build:prod": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/client/build' react-scripts build"
+    "build:prod": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/dist/client/build' react-scripts build"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +20,7 @@
     "date-fns": "^4.1.0",
     "echarts": "^5.5.1",
     "echarts-for-react": "^3.0.2",
+    "immer": "^10.1.1",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "mathjs": "^13.1.1",

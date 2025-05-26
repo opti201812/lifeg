@@ -26,36 +26,121 @@ export const defaultSmsConfig: SmsConfig = {
 };
 
 export interface Radar {
+   id: string | number;
+   person_pose: string;
+   distance: number;
+   remark?: string;
+   ip?: string;
+}
+
+export interface RoomConfig {
    id: number;
    name: string;
-   url: string;
-   enabled: boolean;
-   remark: string;
+   type: number;
+   radars: RadarConfig[];
+   maxPersonnel: number;
+   remark?: string;
+}
+
+export interface RadarConfig {
+   id: string;
+   ip: string;
+   port: number;
+   personPose: "坐姿" | "卧姿";
+   distance: number;
+}
+
+export interface RoomState {
+   id: number;
+   personnel: PersonnelState[];
+   radars: RadarState[];
+}
+
+export interface PersonnelState {
+   id: number;
+   name: string;
+   status: "unarmed" | "armed";
+   devices: {
+      bracelet?: BraceletData;
+      radars: RadarData[];
+   };
+   aggregatedData: AggregatedData;
+   lastUpdate: number;
+}
+
+export interface BraceletData {
+   id: string;
+   heartRate: number;
+   breathRate: number;
+   batteryLevel: number;
+   lastUpdate: number;
+}
+
+export interface RadarData {
+   id: string;
+   heartRate: number;
+   breathRate: number;
+   posture: "坐姿" | "卧姿";
+   distance: number;
+   environmentInterference: number;
+   lastUpdate: number;
+}
+
+export interface RadarState {
+   id: string;
+   status: "normal" | "failure" | "abnormal";
+   connected: boolean;
+}
+
+export interface AggregatedData {
+   heartRate: number;
+   breathRate: number;
+   posture: "坐姿" | "卧姿";
+   distance: number;
 }
 
 export interface Room {
    id: number;
    name: string;
-   ip: string;
-   radar_id: number;
    enabled: boolean;
-   remark: string;
-   personnel_id?: number | null; // Add the personnel_id field (optional)
-   personnelName?: string; // Add the personnelName field (optional)
-   alarm?: boolean;
+   personnel_id: number;
+   typeId: number;
+   type?: number;
+   radars: {
+      id: string | number;
+      person_pose: string;
+      distance: number;
+   }[];
+   remark?: string;
+   networkFailure?: boolean;
+   radarFailure?: boolean;
+   radarAbnormal?: boolean;
+   environment?: number;
    heartRate?: number;
    breathRate?: number;
    distance?: number;
-   mattress_distance?: number; // Add mattress_distance (optional)
-   time?: number; // Add time (optional)
-   personnel_name?: string; // Add personnel_name (optional)
-   schedules?: PersonnelSchedule[]; // Add the schedules property
-   networkFailure?: boolean; // Add networkFailure (optional)
-   radarFailure?: boolean; // Add radarFailure (optional)
-   radarAbnormal?: boolean; // Add radar  (optional)
-   person_pose?: string; // Add person_pose (optional)
-   environment?: number; // Add environment (optional)
-   createTimeStamp?: number; // Add createTimeStamp (optional)
+   time?: string;
+   person_pose?: string;
+   mattress_distance?: number;
+   personnelName?: string;
+   schedules?: PersonnelSchedule[];
+   state?: {
+      personnel: PersonnelState[];
+      radars: RadarState[];
+   };
+   config?: {
+      maxPersonnel: number;
+      maxRadars: number;
+      remark?: string;
+   };
+   devices?: {
+      radars: any[];
+      bracelets: any[];
+   };
+   alarm?: boolean;
+   templateType?: TemplateType;
+   ip?: string;
+   radar_id?: number;
 }
 
 export interface User {
@@ -78,7 +163,7 @@ export interface PersonnelSchedule {
 }
 
 export interface Personnel {
-   id?: number; // Optional for new personnel
+   id: number;
    name: string;
    id_number: string;
    room_id?: number | null; // Optional, can be null
@@ -158,3 +243,32 @@ export interface RoomAuthConfig {
 export const defaultRoomAuthConfig: RoomAuthConfig = {
    roomAuthEnabled: false,
 };
+
+export enum TemplateType {
+   SINGLE_RADAR_SINGLE_BRACELET = "SINGLE_RADAR_SINGLE_BRACELET",
+   SINGLE_RADAR_MULTI_BRACELET = "SINGLE_RADAR_MULTI_BRACELET",
+   MULTI_RADAR_MULTI_BRACELET = "MULTI_RADAR_MULTI_BRACELET",
+   VEHICLE_MODE = "VEHICLE_MODE",
+}
+
+export interface RoomType {
+   typeId: number;
+   typeName: string;
+   templateId: number;
+   remark?: string;
+}
+
+export interface RoomTemplate {
+   templateId: number;
+   templateName: string;
+   maxRadars: number;
+   maxPersonnel: number;
+   remark?: string;
+}
+
+export interface WebSocketMessage {
+   type: "braceletUpdate" | "radarUpdate";
+   roomId: number;
+   personnelId: number;
+   data: BraceletData | RadarData;
+}
