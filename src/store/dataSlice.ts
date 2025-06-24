@@ -12,27 +12,38 @@ import {
    RadarData,
    PersonnelState,
    AggregatedData,
+   RoomTemplate,
 } from "../types";
 
 interface Association {
+   id?: number;
+   associationId?: number;
    personnelId: number;
+   braceletId: string | null;
    roomId: number;
+   radarIds: string[];
 }
 
 interface DataState {
    rooms: Room[];
+   radars: Radar[]; // 新增雷达数据数组
+   personnel: Personnel[]; // 新增人员数据数组
+   associations: Association[]; // 新增关联数据数组
    alarms: any[]; // Adjust the type based on your actual alarm data structure
    roomTypes: RoomType[];
-   associations: Association[];
    personDeviceData: Record<number, any>; // 新增字段用于存储人员设备数据
+   roomTemplates: RoomTemplate[];
 }
 
 const initialState: DataState = {
    rooms: [],
+   radars: [], // 初始化雷达数据
+   personnel: [], // 初始化人员数据
+   associations: [], // 初始化关联数据
    alarms: [],
    roomTypes: [],
-   associations: [],
    personDeviceData: {}, // 初始化人员设备数据
+   roomTemplates: [],
 };
 
 const dataSlice = createSlice({
@@ -41,6 +52,25 @@ const dataSlice = createSlice({
    reducers: {
       setRooms: (state, action: PayloadAction<Room[]>) => {
          state.rooms = action.payload;
+      },
+      setRadars: (state, action: PayloadAction<Radar[]>) => {
+         state.radars = action.payload;
+      },
+      setPersonnel: (state, action: PayloadAction<Personnel[]>) => {
+         state.personnel = action.payload;
+      },
+      setAssociations: (state, action: PayloadAction<Association[]>) => {
+         state.associations = action.payload;
+      },
+      updateRadarStatus: (state, action: PayloadAction<{ radarId: string | number; status: any }>) => {
+         const { radarId, status } = action.payload;
+         const radarIndex = state.radars.findIndex((radar) => radar.id === radarId);
+         if (radarIndex !== -1) {
+            state.radars[radarIndex] = {
+               ...state.radars[radarIndex],
+               ...status,
+            };
+         }
       },
       updateRoomData: (state, action: PayloadAction<{ roomId: number; data: any }>) => {
          const { roomId, data } = action.payload;
@@ -139,6 +169,12 @@ const dataSlice = createSlice({
             }
          });
       },
+      setRoomTemplates: (state, action: PayloadAction<RoomTemplate[]>) => {
+         state.roomTemplates = action.payload;
+      },
+      setRoomTypes: (state, action) => {
+         state.roomTypes = action.payload;
+      },
    },
 });
 
@@ -166,6 +202,10 @@ const aggregateData = (personnel: PersonnelState): AggregatedData => {
 
 export const {
    setRooms,
+   setRadars,
+   setPersonnel,
+   setAssociations,
+   updateRadarStatus,
    updateRoomData,
    addAlarm,
    clearAlarms,
@@ -180,6 +220,8 @@ export const {
    updateBraceletData,
    updateRadarData,
    updatePersonnelDeviceData,
+   setRoomTemplates,
+   setRoomTypes,
 } = dataSlice.actions;
 
 export default dataSlice.reducer;

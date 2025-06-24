@@ -17,6 +17,7 @@ const RoomInfoFoot: React.FC<RoomInfoFootProps> = ({ lastUpdate, onDisarmClick, 
             justifyContent: "space-between",
             alignItems: "center",
             width: "100%",
+            textAlign: "center",
          }}
       >
          <p style={{ textAlign: "left", fontSize: "12px", color: "#999" }}>体位姿态: {pose || "-"}</p>

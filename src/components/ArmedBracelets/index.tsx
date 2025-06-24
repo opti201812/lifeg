@@ -98,7 +98,7 @@ const ArmedBracelets: React.FC = () => {
       };
 
       fetchBracelets();
-   }, []);
+   }, [modalVisible]);
 
    const handleAction = async (type: string, record: any) => {
       if (type === "reclaim") {
@@ -205,10 +205,14 @@ const ArmedBracelets: React.FC = () => {
 
          <ArmPersonnelModal
             visible={modalVisible}
-            initialValues={{ braceletId: selectedBracelet?.id }}
+            entryType='ARMED_BRACELET'
+            initialValues={{
+               braceletId: selectedBracelet?.id,
+               associationId: selectedBracelet?.associationId,
+            }}
             onCancel={() => setModalVisible(false)}
             onSubmit={(values) => {
-               console.log("设防操作:", values);
+               console.log("变更操作:", values);
                setModalVisible(false);
             }}
          />

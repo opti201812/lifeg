@@ -11,6 +11,7 @@ import AlarmBanner from "../components/AlarmBanner";
 import DashboardRoutes from "../routes/DashboardRoutes";
 import { WebSocketHandler } from "../services";
 import SidebarMenu from "../components/SidebarMenu/index";
+import { theme } from "../styles/theme";
 
 const { Header, Content, Sider, Footer } = Layout;
 
@@ -82,12 +83,14 @@ const MainLayout: React.FC = () => {
          <Layout style={{ minHeight: "100vh" }}>
             <Header
                style={{
-                  background: "#001529",
+                  background: theme.headerBackgroundColor,
                   padding: 0,
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
                   width: "100%",
+                  position: "fixed",
+                  zIndex: 1000,
                }}
             >
                <div style={{ display: "flex", alignItems: "center" }}>
@@ -105,16 +108,23 @@ const MainLayout: React.FC = () => {
                   </div>
                )}
             </Header>
-            <Layout>
+            <Layout style={{ marginTop: 64 }}>
                {role === "admin" && (
-                  <Sider collapsible style={{ background: "#002140", height: "calc(100vh - 64px)" }}>
+                  <Sider
+                     collapsible
+                     style={{
+                        background: theme.menuBackgroundColor,
+                        minHeight: "calc(100vh - 64px)",
+                        height: "auto",
+                     }}
+                  >
                      <SidebarMenu />
                   </Sider>
                )}
-               <Layout>
+               <Layout style={{ background: theme.contentBackgroundColor }}>
                   <Content style={{ margin: "24px 16px 0", overflow: "initial" }}>
                      <DashboardRoutes />
-                     {isAuthenticated && <AlarmBanner />}
+                     {isAuthenticated && config.alarm.displayMode === "banner" && <AlarmBanner />}
                   </Content>
                   <Footer style={{ textAlign: "center", width: "100%", color: "rgba(0, 0, 0, 0.45)" }}>
                      {new Date().getFullYear()} {BRAND_CONFIG?.COMPANY_NAME} 版权所有 {version}

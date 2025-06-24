@@ -83,7 +83,7 @@
 
 /* 统一卡片高度 */
 .ant-card {
-   min-height: 320px;
+   /* min-height: 320px; */
    display: flex;
    flex-direction: column;
 }

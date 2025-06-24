@@ -1,6 +1,5 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Overview from "../components/Overview";
 import NewOverview from "../components/NewOverview";
 import HistoryData from "../components/HistoryData";
 import AlarmDisplay from "../components/AlarmDisplay";

@@ -86,17 +86,12 @@ const UnassignedBracelets: React.FC = () => {
    };
    useEffect(() => {
       fetchBracelets();
-   }, []);
+   }, [modalVisible]);
 
-   const handleAction = async (type: string, record: any) => {
+   const handleAction = async (type: any, record: any) => {
       setSelectedBracelet(record);
-      if (type === "assign") {
-         setModalType("assign");
-         setModalVisible(true);
-      } else if (type === "arm") {
-         setModalType("arm");
-         setModalVisible(true);
-      }
+      setModalType(type);
+      setModalVisible(true);
    };
 
    return (
@@ -113,14 +108,15 @@ const UnassignedBracelets: React.FC = () => {
 
          <ArmPersonnelModal
             visible={modalVisible}
-            title={modalType === "assign" ? "分配手环" : "手环设防"}
+            entryType='UNASSIGNED_BRACELET'
+            actionType={modalType}
             initialValues={{
                braceletId: selectedBracelet?.id,
+               roomId: undefined,
             }}
             onCancel={() => setModalVisible(false)}
             onSubmit={(values) => {
                setModalVisible(false);
-               fetchBracelets();
             }}
          />
       </div>

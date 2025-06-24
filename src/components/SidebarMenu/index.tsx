@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import config from "../../config";
 import useMenuItems from "../../hooks/useMenuItems";
+import { theme } from "../../styles/theme";
 
 const SidebarMenu: React.FC = () => {
    const navigate = useNavigate();
@@ -68,7 +69,18 @@ const SidebarMenu: React.FC = () => {
    };
 
    return (
-      <Menu theme='dark' mode='inline' defaultSelectedKeys={["overview"]} items={menuItems} onClick={handleMenuClick} />
+      <Menu
+         theme='dark'
+         mode='inline'
+         defaultSelectedKeys={["overview"]}
+         items={menuItems}
+         onClick={handleMenuClick}
+         style={{
+            height: "100%", // 确保菜单填充整个侧边栏
+            borderRight: 0,
+            background: theme.menuBackgroundColor,
+         }}
+      />
    );
 };
 

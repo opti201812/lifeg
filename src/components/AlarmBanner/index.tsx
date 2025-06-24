@@ -7,6 +7,7 @@ import { removeAlarm } from "../../store/dataSlice";
 import axios from "axios";
 import config from "../../config";
 import { createSelector } from "@reduxjs/toolkit";
+import { theme } from "../../styles/theme";
 
 interface AlarmDevices {
    radar?: Array<{
@@ -186,15 +187,15 @@ const AlarmBanner: React.FC = () => {
          style={{
             position: "fixed",
             bottom: 0,
-            left: 0,
+            left: 200,
             maxHeight: "300px",
-            width: "100%",
+            width: "calc(100% - 200px)",
             overflow: "auto",
             zIndex: 1000,
          }}
       >
          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between" }}>
-            {flattenedAlarms.map((alarm, index) => {
+            {flattenedAlarms.slice(0, 6).map((alarm, index) => {
                const isSingleInRow = index % 2 === 0 && index === flattenedAlarms.length - 1;
                const { title, content } = getAlarmDisplayText(alarm, rooms);
 
@@ -249,7 +250,7 @@ const AlarmBanner: React.FC = () => {
                         }
                         banner
                         closable={false}
-                        style={{ backgroundColor: "#ffe58f" }}
+                        style={{ backgroundColor: theme.alarmBannerBackgroundColor }}
                      />
                   </div>
                );

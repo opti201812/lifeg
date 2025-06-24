@@ -19,6 +19,7 @@ interface HistoricalData {
    distance: number;
    isAlarm: boolean;
    dateTime: string;
+   time: string;
 }
 
 const HistoryData: React.FC = () => {
@@ -229,18 +230,154 @@ const HistoryData: React.FC = () => {
       XLSX.writeFile(wb, "historical_data.xlsx");
    };
 
-   const handlePrint = async () => {
-      // Generate PDF and print
-      const doc = new jsPDF();
-      const op = {
-         head: [columns.map((col) => col.key)],
-         body: historicalData.map((row) => Object.values(row)),
-      };
-      autoTable(doc, op);
-      doc.autoPrint();
-      doc.output("dataurlnewwindow"); // Open in new window for printing
-   };
+   // ... existing code ...
+   const handlePrint = () => {
+      // 创建打印内容
+      const printContent = `
+      <html>
+         <head>
+            <title>历史数据报告</title>
+            <style>
+               @media print {
+                  * {
+                     margin: 0;
+                     padding: 0;
+                     box-sizing: border-box;
+                  }
+                  
+                  body {
+                     font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+                     font-size: 12px;
+                     line-height: 1.4;
+                     color: #000;
+                  }
+                  
+                  .print-container {
+                     width: 100%;
+                     margin: 20px;
+                  }
+                  
+                  .print-title {
+                     text-align: center;
+                     font-size: 18px;
+                     font-weight: bold;
+                     margin-bottom: 20px;
+                  }
+                  
+                  .print-table {
+                     width: 100%;
+                     border-collapse: collapse;
+                     margin-bottom: 20px;
+                  }
+                  
+                  .print-table th,
+                  .print-table td {
+                     border: 1px solid #000;
+                     padding: 6px 4px;
+                     text-align: left;
+                     font-size: 10px;
+                     word-wrap: break-word;
+                  }
+                  
+                  .print-table th {
+                     background-color: #f0f0f0;
+                     font-weight: bold;
+                  }
+                  
+                  .print-date {
+                     text-align: right;
+                     font-size: 10px;
+                     margin-top: 10px;
+                  }
+                  
+                  @page {
+                     size: A4 landscape;
+                     margin: 1cm;
+                  }
+               }
+            </style>
+         </head>
+         <body>
+            <div class="print-container">
+               <div class="print-title">历史数据报告</div>
+               <table class="print-table">
+                  <thead>
+                     <tr>
+                        ${columns
+                           .map((col) => {
+                              const title =
+                                 typeof col.title === "object" && col.title.props
+                                    ? col.title.props.children
+                                    : col.title;
+                              return `<th>${title}</th>`;
+                           })
+                           .join("")}
+                     </tr>
+                  </thead>
+                  <tbody>
+                     ${historicalData
+                        .map(
+                           (row) => `
+                        <tr>
+                           ${columns
+                              .map((col) => {
+                                 const value = row[col.dataIndex as keyof typeof row];
+                                 let displayValue = "";
 
+                                 switch (col.dataIndex) {
+                                    case "id_number":
+                                       displayValue =
+                                          typeof value === "string" && value
+                                             ? value.replace(/^(\d{6})(\d+)(\d{2})$/, "$1********$3")
+                                             : "";
+                                       break;
+                                    case "bracelet_heart_rate":
+                                       displayValue = value ? String(value) : "N/A";
+                                       break;
+                                    case "tamper_status":
+                                       displayValue = value ? "是" : "否";
+                                       break;
+                                    case "apnea":
+                                       displayValue = parseInt(String(value)) > 0 ? "是" : "否";
+                                       break;
+                                    case "time":
+                                       displayValue = dayjs(String(value)).format("YYYY-MM-DD HH:mm:ss");
+                                       break;
+                                    default:
+                                       displayValue = String(value || "");
+                                 }
+
+                                 return `<td>${displayValue}</td>`;
+                              })
+                              .join("")}
+                        </tr>
+                     `
+                        )
+                        .join("")}
+                  </tbody>
+               </table>
+               <div class="print-date">打印时间: ${dayjs().format("YYYY-MM-DD HH:mm:ss")}</div>
+            </div>
+         </body>
+      </html>
+   `;
+
+      // 创建新窗口并打印
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+         printWindow.document.write(printContent);
+         printWindow.document.close();
+
+         // 等待内容加载完成后打印
+         printWindow.onload = () => {
+            printWindow.print();
+            printWindow.close();
+         };
+      } else {
+         message.error("无法打开打印窗口，请检查浏览器弹窗设置");
+      }
+   };
+   // ... existing code ...
    const columns = [
       { title: "人员编号", dataIndex: "person_id", key: "personnel_id" },
       { title: "姓名", dataIndex: "name", key: "name" },
@@ -281,8 +418,15 @@ const HistoryData: React.FC = () => {
          title: <Tooltip title='米（雷达测量距离）'>雷达距离</Tooltip>,
          dataIndex: "distance",
          key: "distance",
+         render: (text: string) => (text ? (parseInt(text) / 100).toFixed(1) : ""),
       },
       { title: "体位", dataIndex: "pose", key: "pose" },
+      {
+         title: "呼吸暂停",
+         dataIndex: "apnea",
+         key: "apnea",
+         render: (text: string) => (parseInt(text) > 0 ? "是" : "否"),
+      },
       { title: "环境干扰", dataIndex: "environment_interference", key: "environment" },
       {
          title: "日期时间",
@@ -395,7 +539,7 @@ const HistoryData: React.FC = () => {
             </Form.Item>
          </Form>
 
-         <Table dataSource={historicalData} columns={columns} />
+         <Table dataSource={historicalData} columns={columns} rowKey={(record) => record.time} />
       </div>
    );
 };

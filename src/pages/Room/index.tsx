@@ -1,7 +1,21 @@
 // pages/Room/index.tsx
 
 import React, { useState, useEffect, useRef } from "react";
-import { Carousel, message, Button, Modal, Form, InputNumber, Input, Select, Row, Col, Menu, Dropdown } from "antd";
+import {
+   Carousel,
+   message,
+   Button,
+   Modal,
+   Form,
+   InputNumber,
+   Input,
+   Select,
+   Row,
+   Col,
+   Menu,
+   Dropdown,
+   Tooltip,
+} from "antd";
 import { useDispatch, useSelector } from "react-redux";
 import DailyDataSlide from "./DailyDataSlide";
 import WeeklyDataSlide from "./WeeklyDataSlide";
@@ -28,6 +42,7 @@ const RoomPage: React.FC<{
       roomId: number;
       personnelId?: number | null;
       associationId: string;
+      templateId?: number;
    }>({ name: "", age: 0, gender: "", roomId: 0, personnelId: personnelId, associationId: "" });
    const roomData = useSelector((state: RootState) => state.data.rooms.find((room) => room.id === roomId));
    const carouselRef = useRef<any>(null);
@@ -238,25 +253,17 @@ const RoomPage: React.FC<{
             <Button icon={<RightOutlined />} onClick={() => carouselRef.current?.goTo((currentSlide + 1) % 3)} />
          </div>
 
-         <div style={{ display: "flex", gap: "16px" }}>
-            {!isMonitoringEnabled ? (
+         <div style={{ display: "flex", gap: "16px", justifyContent: "center", marginTop: "10px" }}>
+            <Tooltip title='调整设防参数' mouseEnterDelay={0.5}>
                <Button
                   type='primary'
+                  danger={isMonitoringEnabled}
                   onClick={() => setIsModalVisible(true)}
                   style={{ height: 48, width: 160, fontSize: 24 }}
                >
                   变更
                </Button>
-            ) : (
-               <Button
-                  type='primary'
-                  danger
-                  onClick={() => setIsModalVisible(true)}
-                  style={{ height: 48, width: 160, fontSize: 24 }}
-               >
-                  变更
-               </Button>
-            )}
+            </Tooltip>
             <Button
                type='default'
                danger
@@ -280,16 +287,20 @@ const RoomPage: React.FC<{
                }}
                style={{ height: 48, width: 160, fontSize: 24 }}
             >
-               解除
+               撤防
             </Button>
          </div>
 
          <ArmPersonnelModal
             visible={isModalVisible}
-            initialValues={{ associationId: associationId }}
+            entryType='ROOM_DETAIL'
+            actionType={isMonitoringEnabled ? "disarm" : "arm"}
+            initialValues={{
+               associationId: associationId,
+               roomId: roomId,
+            }}
             onCancel={() => setIsModalVisible(false)}
             onSubmit={() => setIsModalVisible(false)}
-            // 动态设置title
             title={isMonitoringEnabled ? "撤防" : "设防"}
          />
       </div>

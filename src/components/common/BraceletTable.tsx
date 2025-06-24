@@ -1,5 +1,5 @@
 import React from "react";
-import { Table, Tag, Button } from "antd";
+import { Table, Tag, Button, Tooltip } from "antd";
 import { getBatteryStatus } from "../../utils";
 import { useNavigate } from "react-router-dom";
 
@@ -92,12 +92,16 @@ const BraceletTable: React.FC<BraceletTableProps> = ({ data, loading, actionType
                );
             } else {
                actions.push(
-                  <Button key='assign' onClick={() => onAction("assign", record)}>
-                     分配
-                  </Button>,
-                  <Button key='arm' type='primary' onClick={() => onAction("arm", record)}>
-                     设防
-                  </Button>
+                  <Tooltip key='assign-tooltip' title='关联手环到人员' mouseEnterDelay={0.5}>
+                     <Button key='assign' onClick={() => onAction("assign", record)}>
+                        分配
+                     </Button>
+                  </Tooltip>,
+                  <Tooltip key='arm-tooltip' title='关联手环和房间到人员并设防' mouseEnterDelay={0.5}>
+                     <Button key='arm' type='primary' onClick={() => onAction("arm", record)}>
+                        设防
+                     </Button>
+                  </Tooltip>
                );
             }
 

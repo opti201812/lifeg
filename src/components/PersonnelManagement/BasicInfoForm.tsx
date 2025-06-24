@@ -55,8 +55,8 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ form, editingPersonnel })
             <Col span={12}>
                <Form.Item label='性别' name={["gender"]}>
                   <Select placeholder='请选择性别' allowClear>
-                     <Select.Option value='男'>男</Select.Option>
-                     <Select.Option value='女'>女</Select.Option>
+                     <Select.Option value='male'>男</Select.Option>
+                     <Select.Option value='female'>女</Select.Option>
                   </Select>
                </Form.Item>
             </Col>

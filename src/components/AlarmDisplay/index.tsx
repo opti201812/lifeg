@@ -113,11 +113,8 @@ const AlarmDisplay: React.FC = () => {
       setLoading(true);
       try {
          const queryParams = new URLSearchParams();
+         const selectedPersonnel = { name: "", id_number: "" };
 
-         const selectedPersonnel = {
-            name: "",
-            id_number: "",
-         };
          if (filters.personnelId) {
             queryParams.append("personnelId", filters.personnelId.toString());
             selectedPersonnel.name = nameOptions.find((p) => p.value === filters.personnelId)?.label || "";
@@ -153,11 +150,15 @@ const AlarmDisplay: React.FC = () => {
          const response = await axios.get(`${config.backend.url}/history/alarms?${queryParams.toString()}`);
          // 从 personnelOptions、nameOptions、idNumberOptions 中查找当前人员的姓名、身份证号码，然后与response.data进行合并
 
-         const alarmDataWithPersonInfo = response.data.map((alarm: any) => ({
-            ...alarm,
-            name: selectedPersonnel.name,
-            id_number: selectedPersonnel.id_number,
-         }));
+         // 方案1：前端排序（如果后端未支持排序）
+         const alarmDataWithPersonInfo = response.data
+            .map((alarm: any) => ({
+               ...alarm,
+               name: selectedPersonnel.name,
+               id_number: selectedPersonnel.id_number,
+            }))
+            .sort((a: any, b: any) => new Date(b.create_date).getTime() - new Date(a.create_date).getTime());
+
          setAlarmData(alarmDataWithPersonInfo);
       } catch (error) {
          if (error instanceof AxiosError && error.response?.status === 404) {
@@ -223,14 +224,170 @@ const AlarmDisplay: React.FC = () => {
    };
 
    const handlePrint = () => {
-      const doc = new jsPDF();
-      autoTable(doc, {
-         head: [columns.map((col) => col.key)],
-         // body: alarmData.map((row) => columns.map((col) => col.render ? col.render(row[col.dataIndex]) : row[col.dataIndex])),
-         body: alarmData.map((row) => Object.values(row)),
-      });
-      doc.autoPrint();
-      doc.output("dataurlnewwindow");
+      // 创建打印内容
+      const printContent = `
+         <html>
+            <head>
+               <title>告警信息报告</title>
+               <style>
+                  @media print {
+                     * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                     }
+                     
+                     body {
+                        font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+                        font-size: 12px;
+                        line-height: 1.4;
+                        color: #000;
+                     }
+                     
+                     .print-container {
+                        width: 100%;
+                        margin: 20px;
+                     }
+                     
+                     .print-title {
+                        text-align: center;
+                        font-size: 18px;
+                        font-weight: bold;
+                        margin-bottom: 20px;
+                     }
+                     
+                     .print-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-bottom: 20px;
+                     }
+                     
+                     .print-table th,
+                     .print-table td {
+                        border: 1px solid #000;
+                        padding: 6px 4px;
+                        text-align: left;
+                        font-size: 10px;
+                        word-wrap: break-word;
+                     }
+                     
+                     .print-table th {
+                        background-color: #f0f0f0;
+                        font-weight: bold;
+                     }
+                     
+                     .print-date {
+                        text-align: right;
+                        font-size: 10px;
+                        margin-top: 10px;
+                     }
+                     
+                     @page {
+                        size: A4 landscape;
+                        margin: 1cm;
+                     }
+                  }
+               </style>
+            </head>
+            <body>
+               <div class="print-container">
+                  <div class="print-title">告警信息报告</div>
+                  <table class="print-table">
+                     <thead>
+                        <tr>
+                           ${columns
+                              .map((col) => {
+                                 const title =
+                                    typeof col.title === "object" && col.title.props
+                                       ? col.title.props.children
+                                       : col.title;
+                                 return `<th>${title}</th>`;
+                              })
+                              .join("")}
+                        </tr>
+                     </thead>
+                     <tbody>
+                        ${alarmData
+                           .map(
+                              (row) => `
+                           <tr>
+                              ${columns
+                                 .map((col) => {
+                                    const value = row[col.dataIndex as keyof typeof row];
+                                    let displayValue = "";
+
+                                    switch (col.dataIndex) {
+                                       case "id_number":
+                                          displayValue =
+                                             typeof value === "string" && value
+                                                ? value.replace(/^(\d{6})(\d+)(\d{2})$/, "$1********$3")
+                                                : "";
+                                          break;
+                                       case "button_status":
+                                          displayValue = value ? "是" : "否";
+                                          break;
+                                       case "distance":
+                                          displayValue = value ? (parseInt(String(value)) / 100).toFixed(1) : "";
+                                          break;
+                                       case "apnea":
+                                          displayValue = parseInt(String(value)) > 0 ? "是" : "否";
+                                          break;
+                                       case "alarm_level":
+                                          switch (String(value)) {
+                                             case "1":
+                                                displayValue = "极度危险";
+                                                break;
+                                             case "2":
+                                                displayValue = "危险";
+                                                break;
+                                             case "3":
+                                                displayValue = "异常";
+                                                break;
+                                             default:
+                                                displayValue = "-";
+                                          }
+                                          break;
+                                       case "create_date":
+                                          displayValue = dayjs(String(value)).format("YYYY-MM-DD HH:mm:ss");
+                                          break;
+                                       case "handling_time":
+                                          displayValue = value
+                                             ? dayjs(String(value)).format("YYYY-MM-DD HH:mm:ss")
+                                             : "";
+                                          break;
+                                       default:
+                                          displayValue = String(value || "");
+                                    }
+
+                                    return `<td>${displayValue}</td>`;
+                                 })
+                                 .join("")}
+                           </tr>
+                        `
+                           )
+                           .join("")}
+                     </tbody>
+                  </table>
+                  <div class="print-date">打印时间: ${dayjs().format("YYYY-MM-DD HH:mm:ss")}</div>
+               </div>
+            </body>
+         </html>
+      `;
+
+      // 创建新窗口并打印
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+         printWindow.document.write(printContent);
+         printWindow.document.close();
+
+         // 等待内容加载完成后打印
+         printWindow.onload = () => {
+            printWindow.print();
+            printWindow.close();
+         };
+      } else {
+         message.error("无法打开打印窗口，请检查浏览器弹窗设置");
+      }
    };
 
    const initialColumns = [
@@ -265,6 +422,12 @@ const AlarmDisplay: React.FC = () => {
          render: (text: string) => (text ? (parseInt(text) / 100).toFixed(1) : ""),
       },
       { title: "体位", dataIndex: "pose", key: "pose" },
+      {
+         title: "呼吸暂停",
+         dataIndex: "apnea",
+         key: "apnea",
+         render: (text: string) => (parseInt(text) > 0 ? "是" : "否"),
+      },
       { title: "环境干扰", dataIndex: "environment", key: "environment" },
       {
          title: "告警级别",

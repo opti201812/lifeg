@@ -42,3 +42,19 @@ export interface WebSocketMessage {
    personnelId?: number;
    roomId?: number;
 }
+
+// 添加到types文件中
+export interface RoomType {
+   typeId: number;
+   typeName: string;
+   templateId: number;
+   remark: string;
+}
+
+export interface RoomTemplate {
+   templateId: number;
+   templateName: string;
+   maxRadars: number;
+   maxPersonnel: number;
+   remark: string;
+}

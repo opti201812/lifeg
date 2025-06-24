@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Table, Button, message, Space } from "antd";
+import { Table, Button, message, Space, Modal } from "antd";
 import axios from "axios";
 import config from "../../config";
 import AddEditRoomModal from "./AddEditRoomModal";
@@ -53,12 +53,24 @@ const RoomManagement: React.FC = () => {
 
    const handleDeleteRoom = async (id: number) => {
       try {
+         await new Promise((resolve, reject) => {
+            Modal.confirm({
+               title: "确认删除",
+               content: "确定要删除此房间吗？",
+               okText: "确认",
+               cancelText: "取消",
+               onOk: resolve,
+               onCancel: () => reject(new Error("用户取消操作")),
+            });
+         });
          await axios.delete(`${config.backend.url}/rooms/${id}`);
          message.success("删除房间成功！");
          fetchData();
       } catch (error) {
-         console.error("Error deleting room:", error);
-         message.error("删除房间失败！");
+         if (error instanceof Error && error.message !== "用户取消操作") {
+            console.error("Error deleting room:", error);
+            message.error("删除房间失败！");
+         }
       }
    };
 

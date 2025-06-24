@@ -12,10 +12,11 @@ import { RoomInfo } from "./RoomInfo";
 import { RadarData } from "../../types";
 import { theme } from "../../styles/theme";
 import { getBatteryStatus } from "../../utils";
+import { useNavigate } from "react-router-dom";
 
 interface RoomStatusSlideProps {
    personnelId: number | null; // 使用人员ID作为入参
-   roomInfo: { name: string; age: number; gender: string; associationId: string };
+   roomInfo: { name: string; age: number; gender: string; associationId: string; templateId?: number };
    isActive: boolean;
 }
 
@@ -37,6 +38,9 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
    // 添加状态来跟踪数据是否过期
    const [isDataStale, setIsDataStale] = useState(false);
 
+   // 新增状态用于强制刷新
+   const [refreshCounter, setRefreshCounter] = useState(0);
+
    // 更新上一次的雷达和手环数据
    useEffect(() => {
       if (!isActive) {
@@ -54,23 +58,21 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
       }
    }, [latestDeviceData, isActive]);
 
-   // 检查数据是否过期的逻辑
+   // 添加定时器，每5秒检查一次数据过期情况
    useEffect(() => {
-      const checkDataStale = () => {
-         const now = new Date();
-         const lastUpdate = previousRadarTimestamp || previousBraceletTimestamp;
-         if (lastUpdate) {
-            const lastUpdateTime = new Date(lastUpdate);
-            const timeDiff = now.getTime() - lastUpdateTime.getTime();
-            setIsDataStale(timeDiff > 5 * 60 * 1000); // 5分钟
-         } else {
-            setIsDataStale(false);
-         }
-      };
+      const interval = setInterval(() => {
+         setRefreshCounter((prev) => prev + 1);
+      }, 5000); // 5秒检查一次
 
-      const interval = setInterval(checkDataStale, 10000); // 每10秒检查一次
-      return () => clearInterval(interval);
-   }, [previousRadarTimestamp, previousBraceletTimestamp]);
+      return () => clearInterval(interval); // 组件卸载时清除定时器
+   }, []);
+
+   // 检查数据是否过期的逻辑
+   const now = Date.now();
+   const isRadarDataExpired = previousRadarTimestamp ? now - new Date(previousRadarTimestamp).getTime() > 10000 : true;
+   const isBraceletDataExpired = previousBraceletTimestamp
+      ? now - new Date(previousBraceletTimestamp).getTime() > 10000
+      : true;
 
    // 使用 theme 中的颜色值
    const staleStyle = isDataStale
@@ -80,7 +82,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
         }
       : {};
 
-   // 使用最新数据或上一次的数据
+   // 使用最新数据或上一次的数据，并根据过期状态显示
    const radarData = latestDeviceData?.devices?.radar || previousRadarData || [];
    const braceletData = latestDeviceData?.devices?.bracelet || previousBraceletData || null;
 
@@ -96,15 +98,117 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
 
    // 计算电量百分比
    const { status: batteryStatus } = getBatteryStatus(braceletData?.batteryVoltage);
-   const CARD_HEIGHT = 20;
+   const CARD_HEIGHT = 160;
+
+   // 统一样式配置
+   const styles = {
+      // 卡片高度配置
+      heights: {
+         bracelet: CARD_HEIGHT, // 手环卡片高度
+         radar: CARD_HEIGHT, // 雷达卡片高度（原来的一半）
+      },
+
+      // 容器样式
+      containers: {
+         braceletSection: {
+            marginBottom: 24,
+            padding: 16,
+            background: "#f0f2f5",
+            borderRadius: 8,
+         },
+         radarSection: {
+            padding: 16,
+            background: "#f8f9fa",
+            borderRadius: 8,
+         },
+      },
+
+      // 卡片样式
+      card: {
+         base: (height: number) => ({
+            height,
+            overflow: "hidden" as const,
+         }),
+         body: (height: number) => ({
+            padding: "8px",
+            height: `calc(${height}px - 45px)`,
+         }),
+         title: {
+            textAlign: "center" as const,
+         },
+      },
+
+      // 内容容器样式
+      content: {
+         base: {
+            textAlign: "center" as const,
+            padding: 8,
+            display: "flex",
+            flexDirection: "column" as const,
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+         },
+      },
+
+      // 图标样式
+      icons: {
+         heartIcon: {
+            fontSize: 24,
+            color: "red",
+         },
+         imageIcon: {
+            width: 24,
+            height: 24,
+            verticalAlign: "middle" as const,
+            display: "inline-block" as const,
+         },
+      },
+
+      // 文本样式
+      text: {
+         value: {
+            fontSize: 16,
+            fontWeight: "bold" as const,
+            margin: 0,
+         },
+         sectionTitle: {
+            marginBottom: 8,
+            fontWeight: 500,
+            color: "#666",
+         },
+      },
+   };
+
+   // 渲染卡片的通用函数
+   const renderCard = (title: string, icon: React.ReactNode, value: string, height: number) => (
+      <Card
+         title={<div style={styles.card.title}>{title}</div>}
+         style={styles.card.base(height)}
+         styles={{ body: styles.card.body(height) }}
+      >
+         <div style={styles.content.base}>
+            {icon}
+            <p style={styles.text.value}>{value}</p>
+         </div>
+      </Card>
+   );
+
+   const navigate = useNavigate();
+
+   // 在组件内部添加 selector 来获取 personnel 数据
+   const personnel = useSelector((state: any) => state.data.personnel || []);
+
+   // 根据 personnelId 查找对应的人员信息
+   const currentPersonnel = personnel.find((p: any) => p.id === personnelId);
 
    return (
       <Card
          title={
             <RoomInfo
                roomName={roomInfo.name}
-               age={roomInfo.age}
-               gender={roomInfo.gender || ""}
+               age={currentPersonnel?.age || ""}
+               gender={currentPersonnel?.gender === "male" ? "男" : "女"}
                room={{ ...latestDeviceData, devices: { radar: radarData, bracelet: braceletData } }}
                type=''
             />
@@ -113,160 +217,93 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
       >
          <div>
             {/* 第一行：手环数据 */}
-            <div
-               style={{
-                  marginBottom: 24,
-                  padding: 16,
-                  background: "#f0f2f5",
-                  borderRadius: 8,
-                  ...staleStyle,
-               }}
-            >
-               <div style={{ marginBottom: 8, fontWeight: 500, color: "#666" }}>手环数据</div>
+            <div style={{ ...styles.containers.braceletSection, ...staleStyle }}>
+               <div style={styles.text.sectionTitle}>手环数据</div>
                <Row gutter={16}>
                   <Col span={6}>
-                     <Card
-                        title={<div style={{ textAlign: "center" }}>心跳</div>}
-                        size='small'
-                        style={{ height: CARD_HEIGHT, overflow: "hidden" }}
-                        styles={{ body: { padding: "8px", height: `calc(${CARD_HEIGHT} - 45px)` } }}
-                     >
-                        <div style={{ textAlign: "center", padding: 8 }}>
-                           <HeartOutlined style={{ fontSize: 24, color: "red" }} />
-                           <p style={{ fontSize: 20, fontWeight: "bold", margin: "10px 0 0" }}>
-                              {braceletData?.heartRate || "-"} 次/分
-                           </p>
-                        </div>
-                     </Card>
+                     {renderCard(
+                        "心跳",
+                        <HeartOutlined style={styles.icons.heartIcon} />,
+                        `${!isBraceletDataExpired ? braceletData?.heartRate || "-" : "-"} 次/分`,
+                        styles.heights.bracelet
+                     )}
                   </Col>
                   <Col span={6}>
-                     <Card
-                        title={<div style={{ textAlign: "center" }}>电池状态</div>}
-                        style={{ height: CARD_HEIGHT }}
-                        styles={{ body: { padding: "8px", height: `calc(${CARD_HEIGHT}px - 45px)` } }}
-                     >
-                        <div
-                           style={{
-                              textAlign: "center",
-                              padding: 8,
-                              alignSelf: "center",
-                           }}
-                        >
-                           <img
-                              src='/images/battery.png'
-                              alt='Battery'
-                              style={{
-                                 width: 24,
-                                 height: 24,
-                              }}
-                           />
-                           <p style={{ fontSize: 16, fontWeight: "bold", margin: 0 }}>
-                              {batteryStatus !== null ? `${batteryStatus}` : "-"}
-                           </p>
-                        </div>
-                     </Card>
+                     {renderCard(
+                        "电池状态",
+                        <img src='/images/battery.png' alt='Battery' style={styles.icons.imageIcon} />,
+                        `${!isBraceletDataExpired ? (batteryStatus !== null ? `${batteryStatus}` : "-") : "-"}`,
+                        styles.heights.bracelet
+                     )}
                   </Col>
                   <Col span={6}>
-                     <Card
-                        title={<div style={{ textAlign: "center" }}>SOS</div>}
-                        style={{ height: CARD_HEIGHT }}
-                        styles={{ body: { padding: "8px", height: `calc(${CARD_HEIGHT}px - 45px)` } }}
-                     >
-                        <div style={{ textAlign: "center", padding: 8, alignSelf: "center" }}>
-                           <img src='/images/sos.png' alt='SOS' style={{ width: 24, height: 24 }} />
-                           <p style={{ fontSize: 16, fontWeight: "bold", margin: 0 }}>
-                              {braceletData?.buttonStatus === 1 ? "异常" : "正常"}
-                           </p>
-                        </div>
-                     </Card>
+                     {renderCard(
+                        "SOS",
+                        <img src='/images/sos.png' alt='SOS' style={styles.icons.imageIcon} />,
+                        `${!isBraceletDataExpired ? (braceletData?.buttonStatus === 1 ? "异常" : "正常") : "-"}`,
+                        styles.heights.bracelet
+                     )}
                   </Col>
                   <Col span={6}>
-                     <Card
-                        title={<div style={{ textAlign: "center" }}>状态</div>}
-                        style={{ height: CARD_HEIGHT }}
-                        styles={{ body: { padding: "8px", height: `calc(${CARD_HEIGHT}px - 45px)` } }}
-                     >
-                        <div style={{ textAlign: "center", padding: 8, alignSelf: "center" }}>
-                           <img src='/images/status.png' alt='Status' style={{ width: 24, height: 24 }} />
-                           <p style={{ fontSize: 16, fontWeight: "bold", margin: 0 }}>
-                              {braceletData?.tamperStatus === 1 ? "异常" : "正常"}
-                           </p>
-                        </div>
-                     </Card>
+                     {renderCard(
+                        "状态",
+                        <img src='/images/status.png' alt='Status' style={styles.icons.imageIcon} />,
+                        `${!isBraceletDataExpired ? (braceletData?.tamperStatus === 1 ? "异常" : "正常") : "-"}`,
+                        styles.heights.bracelet
+                     )}
                   </Col>
                </Row>
             </div>
 
             {/* 第二行：雷达数据 */}
-            <div
-               style={{
-                  padding: 16,
-                  background: "#f8f9fa",
-                  borderRadius: 8,
-                  ...staleStyle,
-               }}
-            >
-               <div style={{ marginBottom: 8, fontWeight: 5, color: "#666" }}>雷达数据</div>
-               <Row gutter={16}>
-                  <Col span={6}>
-                     <Card
-                        title={<div style={{ textAlign: "center" }}>心跳</div>}
-                        style={{ height: 180 }}
-                        styles={{ body: { padding: "8px", height: `calc(180px - 45px)` } }}
-                     >
-                        <div style={{ textAlign: "center", padding: 8, alignSelf: "center" }}>
-                           <HeartOutlined style={{ fontSize: 20, color: "red" }} />
-                           <p style={{ fontSize: 16, fontWeight: "bold", margin: 0 }}>
-                              {selectedRadarData?.heartRate || "-"} 次/分
-                           </p>
-                        </div>
-                     </Card>
-                  </Col>
-                  <Col span={6}>
-                     <Card
-                        title={<div style={{ textAlign: "center" }}>呼吸</div>}
-                        style={{ height: 180 }}
-                        styles={{ body: { padding: "8px", height: `calc(180px - 45px)` } }}
-                     >
-                        <div style={{ textAlign: "center", padding: 8, alignSelf: "center" }}>
-                           <img src='/images/ll.png' alt='Breath' style={{ width: 24, height: 24 }} />
-                           <p style={{ fontSize: 16, fontWeight: "bold", margin: 0 }}>
-                              {selectedRadarData?.breathRate || "-"} 次/分
-                           </p>
-                        </div>
-                     </Card>
-                  </Col>
-                  <Col span={6}>
-                     <Card
-                        title={<div style={{ textAlign: "center" }}>距离</div>}
-                        style={{ height: 180 }}
-                        styles={{ body: { padding: "8px", height: `calc(180px - 45px)` } }}
-                     >
-                        <div style={{ textAlign: "center", padding: 8, alignSelf: "center" }}>
-                           <img src='/images/radar2.png' alt='Distance' style={{ width: 24, height: 24 }} />
-                           <p style={{ fontSize: 16, fontWeight: "bold", margin: 0 }}>
-                              {selectedRadarData?.distance ? (selectedRadarData?.distance / 100).toFixed(2) : "-"} 米
-                           </p>
-                        </div>
-                     </Card>
-                  </Col>
-                  <Col span={6}>
-                     <Card
-                        title={<div style={{ textAlign: "center" }}>环境干扰</div>}
-                        style={{ height: 180 }}
-                        styles={{ body: { padding: "8px", height: `calc(180px - 45px)` } }}
-                     >
-                        <div style={{ textAlign: "center", padding: 8, alignSelf: "center" }}>
-                           <img src='/images/radarzzz.png' alt='Environment' style={{ width: 24, height: 24 }} />
-                           <p style={{ fontSize: 16, fontWeight: "bold", margin: 0 }}>
-                              {selectedRadarData?.environmentInterference ||
-                                 (selectedRadarData?.environmentInterference === 0 ? "0" : "-")}
-                           </p>
-                        </div>
-                     </Card>
-                  </Col>
-               </Row>
-            </div>
+            {roomInfo.templateId !== 2 && (
+               <div style={{ ...styles.containers.radarSection, ...staleStyle }}>
+                  <div style={styles.text.sectionTitle}>雷达数据</div>
+                  <Row gutter={16}>
+                     <Col span={6}>
+                        {renderCard(
+                           "心跳",
+                           <HeartOutlined style={{ ...styles.icons.heartIcon, fontSize: 20 }} />,
+                           `${!isRadarDataExpired ? selectedRadarData?.heartRate || "-" : "-"} 次/分`,
+                           styles.heights.radar
+                        )}
+                     </Col>
+                     <Col span={6}>
+                        {renderCard(
+                           "呼吸",
+                           <img src='/images/ll.png' alt='Breath' style={styles.icons.imageIcon} />,
+                           `${!isRadarDataExpired ? selectedRadarData?.breathRate || "-" : "-"} 次/分`,
+                           styles.heights.radar
+                        )}
+                     </Col>
+                     <Col span={6}>
+                        {renderCard(
+                           "距离",
+                           <img src='/images/radar2.png' alt='Distance' style={styles.icons.imageIcon} />,
+                           `${
+                              !isRadarDataExpired && selectedRadarData?.distance
+                                 ? (selectedRadarData?.distance / 100).toFixed(2)
+                                 : "-"
+                           } 米`,
+                           styles.heights.radar
+                        )}
+                     </Col>
+                     <Col span={6}>
+                        {renderCard(
+                           "环境干扰",
+                           <img src='/images/radarzzz.png' alt='Environment' style={styles.icons.imageIcon} />,
+                           `${
+                              !isRadarDataExpired
+                                 ? selectedRadarData?.environmentInterference ||
+                                   (selectedRadarData?.environmentInterference === 0 ? "0" : "-")
+                                 : "-"
+                           }`,
+                           styles.heights.radar
+                        )}
+                     </Col>
+                  </Row>
+               </div>
+            )}
 
             <RoomInfoFoot
                lastUpdate={
@@ -284,7 +321,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
                      }
                      await axios.delete(`${config.backend.url}/associations/${associationId}`);
                      message.success("撤防成功");
-                     window.location.reload();
+                     navigate("/new-overview", { replace: true });
                   } catch (error) {
                      console.error("撤防失败:", error);
                      message.error("撤防失败");

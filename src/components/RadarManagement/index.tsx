@@ -1,6 +1,6 @@
 // components/RadarManagement/index.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { Table, Button, message, Space } from "antd";
+import { Table, Button, message, Space, Modal } from "antd";
 import axios from "axios";
 import config from "../../config";
 import AddEditRadarModal from "./AddEditRadarModal";
@@ -38,12 +38,24 @@ const RadarManagement: React.FC = () => {
 
    const handleDeleteRadar = async (id: number) => {
       try {
+         await new Promise((resolve, reject) => {
+            Modal.confirm({
+               title: "确认删除",
+               content: "确定要删除此雷达吗？",
+               okText: "确认",
+               cancelText: "取消",
+               onOk: resolve,
+               onCancel: () => reject(new Error("用户取消操作")),
+            });
+         });
          await axios.delete(`${config.backend.url}/rooms/radars/${id}`);
          message.success("删除雷达成功！");
          fetchData();
       } catch (error) {
-         console.error("Error deleting radar:", error);
-         message.error("删除雷达失败！");
+         if (error instanceof Error && error.message !== "用户取消操作") {
+            console.error("Error deleting radar:", error);
+            message.error("删除雷达失败！请检查雷达是否已被关联？");
+         }
       }
    };
 
