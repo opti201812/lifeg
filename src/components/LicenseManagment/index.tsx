@@ -5,37 +5,48 @@ import { Form, Input, Button, Select, message, Row, Col, Tooltip } from "antd";
 import { CopyOutlined, ImportOutlined } from "@ant-design/icons";
 import axios from "axios";
 import config from "../../config";
-import { useSelector } from "react-redux";
-import { RootState } from "../../store"; // Assuming you have a RootState type defined
 const { Option } = Select;
 
 const LicenseManagement: React.FC = () => {
    const [authCode, setAuthCode] = useState("");
-   const machineCode = useSelector((state: RootState) => state.alertConfig.data?.machineCode);
-   const licenseType = useSelector((state: RootState) => state.alertConfig.data?.licenseType);
-   const expiryDate = useSelector((state: RootState) => state.alertConfig.data?.expiryDate);
+   const [machineCode, setMachineCode] = useState("");
+   const [licenseType, setLicenseType] = useState("");
+   const [expiryDate, setExpiryDate] = useState("");
    const [form] = Form.useForm();
    let lastAuthCode: string | null = null;
    let blurErrorShown = false;
    const [loading, setLoading] = useState(false); // 添加 loading 状态
 
+   // 获取当前授权信息
+   const fetchCurrentLicenseInfo = async () => {
+      try {
+         const response = await axios.get(`${config.backend.url}/v1/license/current-info`);
+         const data = response.data;
+
+         // 设置机器码（无论授权是否有效都会返回）
+         if (data.machineCode) {
+            setMachineCode(data.machineCode);
+            form.setFieldsValue({ machineCode: data.machineCode });
+         }
+
+         // 如果授权有效，设置授权类型和到期时间
+         if (data.success && data.type && data.expiry) {
+            setLicenseType(data.type);
+            setExpiryDate(data.expiry);
+            form.setFieldsValue({
+               licenseType: data.type,
+               expiryDate: data.expiry,
+            });
+         }
+      } catch (error) {
+         console.error("Error fetching current license info:", error);
+         message.error("获取当前授权信息失败");
+      }
+   };
+
    useEffect(() => {
-      if (machineCode) {
-         form.setFieldsValue({
-            machineCode: machineCode,
-         });
-      }
-      if (licenseType) {
-         form.setFieldsValue({
-            licenseType: licenseType,
-         });
-      }
-      if (expiryDate) {
-         form.setFieldsValue({
-            expiryDate: expiryDate,
-         });
-      }
-   }, [machineCode, licenseType, expiryDate]);
+      fetchCurrentLicenseInfo();
+   }, []);
 
    const copyMachineCode = () => {
       navigator.clipboard
@@ -74,6 +85,8 @@ const LicenseManagement: React.FC = () => {
                licenseCode: authCode,
             });
             if (response.data.success) {
+               setLicenseType(response.data.type);
+               setExpiryDate(response.data.expiry);
                form.setFieldsValue({
                   licenseType: response.data.type,
                   expiryDate: response.data.expiry,
