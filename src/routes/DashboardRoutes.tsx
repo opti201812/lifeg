@@ -1,6 +1,7 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import NewOverview from "../components/NewOverview";
+import Overview from "../components/Overview";
 import HistoryData from "../components/HistoryData";
 import AlarmDisplay from "../components/AlarmDisplay";
 import PersonnelManagement from "../components/PersonnelManagement";
@@ -16,6 +17,7 @@ import MiniManagement from "../components/MiniManagement";
 import UnassignedBracelets from "../components/UnassignedBracelets";
 import AssignedBracelets from "../components/AssignedBracelets";
 import AllBracelets from "../components/AllBracelets";
+import Registration from "../components/Registration";
 import RoomPage from "../pages/Room";
 import ArmedBracelets from "../components/ArmedBracelets";
 
@@ -23,6 +25,7 @@ const DashboardRoutes: React.FC = () => {
    return (
       <Routes>
          <Route path='new-overview/:roomId?' element={<NewOverview />} />
+         <Route path='overview/:roomId?' element={<Overview />} />
          <Route path='history' element={<HistoryData />} />
          <Route path='alarm-display' element={<AlarmDisplay />} />
          <Route path='personnel-management' element={<PersonnelManagement />} />
@@ -39,6 +42,7 @@ const DashboardRoutes: React.FC = () => {
          <Route path='armed-bracelets' element={<ArmedBracelets />} />
          <Route path='assigned-bracelets' element={<AssignedBracelets />} />
          <Route path='unassigned-bracelets' element={<UnassignedBracelets />} />
+         <Route path='registration' element={<Registration />} />
          <Route
             path='room/:roomId'
             element={<RoomPage personnelId={null} roomId={1} associationId={""} initialSlide={0} />}

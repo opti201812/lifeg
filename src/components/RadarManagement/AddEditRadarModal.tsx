@@ -56,9 +56,11 @@ const AddEditRadarModal: React.FC<AddEditRadarModalProps> = ({
          };
 
          if (isEditing) {
+            // TODO: 调用更新雷达距离的API
             await axios.put(`${config.backend.url}/rooms/radars/${editingRadar?.id}`, radarData);
             message.success("更新雷达成功！");
          } else {
+            // TODO: 调用新增雷达的API
             await axios.post(`${config.backend.url}/rooms/radars`, radarData);
             message.success("新增雷达成功！");
          }

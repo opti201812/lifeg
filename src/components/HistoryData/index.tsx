@@ -52,12 +52,14 @@ const HistoryData: React.FC = () => {
       idNumber: string;
       dateRange: dayjs.Dayjs[] | null;
       isAlarm: boolean | null;
+      dataCategory: string; // 新增数据类别选择
    }>({
       personnelId: null,
       name: null,
       idNumber: "",
       dateRange: [dayjs().subtract(1, "day"), dayjs()],
       isAlarm: null,
+      dataCategory: "basic", // 默认为基础体征
    });
    const [loading, setLoading] = useState(false);
 
@@ -139,7 +141,13 @@ const HistoryData: React.FC = () => {
             queryParams.append("endDate", (filters.dateRange[1] as dayjs.Dayjs).format("YYYY-MM-DD HH:mm:ss"));
          }
 
-         const response = await axios.get(`${config.backend.url}/history?${queryParams.toString()}`);
+         // TODO: 根据数据类别调用不同的API端点
+         // 基础体征: /history/basic
+         // 体征分析: /history/analysis
+         // 综合评测: /history/evaluation
+         const apiEndpoint = filters.dataCategory === "basic" ? "/history" : `/history/${filters.dataCategory}`;
+
+         const response = await axios.get(`${config.backend.url}${apiEndpoint}?${queryParams.toString()}`);
          const historicalDataWithPersonInfo = response.data.map((data: any) => ({
             ...data,
             name: selectedPersonnel.name,
@@ -165,78 +173,90 @@ const HistoryData: React.FC = () => {
          idNumber: "",
          dateRange: [dayjs().subtract(1, "day"), dayjs()], // Reset to the last 24 hours
          isAlarm: null,
+         dataCategory: "basic", // 重置为默认的基础体征
       });
       form.resetFields();
    };
 
    const handleExport = () => {
       const newData = historicalData.map((item: any) => {
-         /*
-         {
-    "time": "2025-05-26 12:54:12",
-    "person_id": "15",
-    "bracelet_heart_rate": "",
-    "radar_heart_rate": "124",
-    "breath_rate": "21",
-    "distance": "106.67",
-    "confidence": "65",
-    "environment_interference": "97",
-    "below60_heart_rate_count": "",
-    "alarm_status": "1",
-    "fall_status": "7",
-    "dynamic_status": "",
-    "battery_voltage": "",
-    "tamper_status": "",
-    "button_status": "",
-    "personnelId": 15
-}
-         */
-         const {
-            time,
-            person_id,
-            bracelet_heart_rate,
-            radar_heart_rate,
-            breath_rate,
-            distance,
-            confidence,
-            environment_interference,
-            below60_heart_rate_count,
-            alarm_status,
-            fall_status,
-            dynamic_status,
-            battery_voltage,
-            tamper_status,
-            button_status,
-            personnelId,
-         } = item;
-
-         return {
-            日期时间: dayjs(time).format("YYYY-MM-DD HH:mm:ss"), // 转为日期时间格式
-            人员编号: personnelId,
-            手环心率: bracelet_heart_rate,
-            雷达心率: radar_heart_rate,
-            呼吸: breath_rate,
-            距离: distance,
-            环境干扰: environment_interference,
-            SOS状态: button_status,
-            手环状态: tamper_status,
-            电池电压: battery_voltage,
+         const baseData = {
+            日期时间: dayjs(item.time).format("YYYY-MM-DD HH:mm:ss"),
+            人员编号: item.personnelId,
+            姓名: item.name,
          };
+
+         switch (filters.dataCategory) {
+            case "basic":
+               return {
+                  ...baseData,
+                  手环心率: item.bracelet_heart_rate || "N/A",
+                  雷达心率: item.radar_heart_rate,
+                  呼吸: item.breath_rate,
+                  距离: item.distance ? (parseInt(item.distance) / 100).toFixed(1) : "",
+                  体位: item.pose,
+                  呼吸暂停: parseInt(item.apnea) > 0 ? "是" : "否",
+                  环境干扰: item.environment_interference,
+                  手环报警: item.tamper_status ? "是" : "否",
+               };
+            case "analysis":
+               return {
+                  ...baseData,
+                  // TODO: 根据实际API返回的数据结构调整
+                  心率变异性: item.hrv || "N/A",
+                  呼吸变异性: item.brv || "N/A",
+                  活动强度: item.activity_level || "N/A",
+                  睡眠质量: item.sleep_quality || "N/A",
+                  压力指数: item.stress_index || "N/A",
+               };
+            case "evaluation":
+               return {
+                  ...baseData,
+                  // TODO: 根据实际API返回的数据结构调整
+                  健康评分: item.health_score || "N/A",
+                  风险评估: item.risk_assessment || "N/A",
+                  建议措施: item.recommendations || "N/A",
+                  趋势分析: item.trend_analysis || "N/A",
+               };
+            default:
+               return baseData;
+         }
       });
+
       // Export to Excel
       const ws = XLSX.utils.json_to_sheet(newData);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Historical Data");
-      XLSX.writeFile(wb, "historical_data.xlsx");
+      const sheetName =
+         filters.dataCategory === "basic"
+            ? "基础体征数据"
+            : filters.dataCategory === "analysis"
+            ? "体征分析数据"
+            : "综合评测数据";
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      XLSX.writeFile(wb, `${sheetName}_${dayjs().format("YYYY-MM-DD")}.xlsx`);
    };
 
    // ... existing code ...
    const handlePrint = () => {
+      // 根据数据类别获取报告标题
+      const getReportTitle = () => {
+         switch (filters.dataCategory) {
+            case "basic":
+               return "基础体征历史数据报告";
+            case "analysis":
+               return "体征分析历史数据报告";
+            case "evaluation":
+               return "综合评测历史数据报告";
+            default:
+               return "历史数据报告";
+         }
+      };
+
       // 创建打印内容
       const printContent = `
       <html>
          <head>
-            <title>历史数据报告</title>
+            <title>${getReportTitle()}</title>
             <style>
                @media print {
                   * {
@@ -299,7 +319,7 @@ const HistoryData: React.FC = () => {
          </head>
          <body>
             <div class="print-container">
-               <div class="print-title">历史数据报告</div>
+               <div class="print-title">${getReportTitle()}</div>
                <table class="print-table">
                   <thead>
                      <tr>
@@ -377,64 +397,97 @@ const HistoryData: React.FC = () => {
          message.error("无法打开打印窗口，请检查浏览器弹窗设置");
       }
    };
-   // ... existing code ...
-   const columns = [
-      { title: "人员编号", dataIndex: "person_id", key: "personnel_id" },
-      { title: "姓名", dataIndex: "name", key: "name" },
-      {
-         title: "身份证号",
-         dataIndex: "id_number",
-         key: "id_number",
-         render: (text: string) => {
-            if (!text) return "";
-            // 保留前6位和最后2位，中间用*代替
-            return text.replace(/^(\d{6})(\d+)(\d{2})$/, "$1********$3");
+   // 根据数据类别获取表格列配置
+   const getColumns = (dataCategory: string) => {
+      const baseColumns = [
+         { title: "人员编号", dataIndex: "person_id", key: "personnel_id" },
+         { title: "姓名", dataIndex: "name", key: "name" },
+         {
+            title: "身份证号",
+            dataIndex: "id_number",
+            key: "id_number",
+            render: (text: string) => {
+               if (!text) return "";
+               // 保留前6位和最后2位，中间用*代替
+               return text.replace(/^(\d{6})(\d+)(\d{2})$/, "$1********$3");
+            },
          },
-      },
-      {
-         title: "手环心率",
-         dataIndex: "bracelet_heart_rate",
-         key: "bracelet_heart_rate",
-         render: (value: number) => value ?? "N/A",
-      },
-      {
-         title: "手环报警",
-         dataIndex: "tamper_status",
-         key: "tamper_status",
-         render: (alarm: boolean) => <span style={{ color: alarm ? "red" : "inherit" }}>{alarm ? "是" : "否"}</span>,
-      },
-      {
-         title: <Tooltip title='次/分钟'>雷达心率</Tooltip>,
-         // heart_rate 或 radar_heart_rate
-         dataIndex: "radar_heart_rate",
-         key: "heart_rate",
-      },
-      {
-         title: <Tooltip title='次/分钟'>雷达呼吸</Tooltip>,
-         dataIndex: "breath_rate",
-         key: "breath_rate",
-      },
-      {
-         title: <Tooltip title='米（雷达测量距离）'>雷达距离</Tooltip>,
-         dataIndex: "distance",
-         key: "distance",
-         render: (text: string) => (text ? (parseInt(text) / 100).toFixed(1) : ""),
-      },
-      { title: "体位", dataIndex: "pose", key: "pose" },
-      {
-         title: "呼吸暂停",
-         dataIndex: "apnea",
-         key: "apnea",
-         render: (text: string) => (parseInt(text) > 0 ? "是" : "否"),
-      },
-      { title: "环境干扰", dataIndex: "environment_interference", key: "environment" },
-      {
-         title: "日期时间",
-         dataIndex: "time",
-         key: "time",
-         render: (dateTime: string) => dayjs(dateTime).format("YYYY-MM-DD HH:mm:ss"),
-      },
-   ];
+         {
+            title: "日期时间",
+            dataIndex: "time",
+            key: "time",
+            render: (dateTime: string) => dayjs(dateTime).format("YYYY-MM-DD HH:mm:ss"),
+         },
+      ];
+
+      switch (dataCategory) {
+         case "basic":
+            return [
+               ...baseColumns,
+               {
+                  title: "手环心率",
+                  dataIndex: "bracelet_heart_rate",
+                  key: "bracelet_heart_rate",
+                  render: (value: number) => value ?? "N/A",
+               },
+               {
+                  title: "手环报警",
+                  dataIndex: "tamper_status",
+                  key: "tamper_status",
+                  render: (alarm: boolean) => (
+                     <span style={{ color: alarm ? "red" : "inherit" }}>{alarm ? "是" : "否"}</span>
+                  ),
+               },
+               {
+                  title: <Tooltip title='次/分钟'>雷达心率</Tooltip>,
+                  dataIndex: "radar_heart_rate",
+                  key: "heart_rate",
+               },
+               {
+                  title: <Tooltip title='次/分钟'>雷达呼吸</Tooltip>,
+                  dataIndex: "breath_rate",
+                  key: "breath_rate",
+               },
+               {
+                  title: <Tooltip title='米（雷达测量距离）'>雷达距离</Tooltip>,
+                  dataIndex: "distance",
+                  key: "distance",
+                  render: (text: string) => (text ? (parseInt(text) / 100).toFixed(1) : ""),
+               },
+               { title: "体位", dataIndex: "pose", key: "pose" },
+               {
+                  title: "呼吸暂停",
+                  dataIndex: "apnea",
+                  key: "apnea",
+                  render: (text: string) => (parseInt(text) > 0 ? "是" : "否"),
+               },
+               { title: "环境干扰", dataIndex: "environment_interference", key: "environment" },
+            ];
+         case "analysis":
+            return [
+               ...baseColumns,
+               // TODO: 添加体征分析相关的列
+               { title: "心率变异性", dataIndex: "hrv", key: "hrv" },
+               { title: "呼吸变异性", dataIndex: "brv", key: "brv" },
+               { title: "活动强度", dataIndex: "activity_level", key: "activity_level" },
+               { title: "睡眠质量", dataIndex: "sleep_quality", key: "sleep_quality" },
+               { title: "压力指数", dataIndex: "stress_index", key: "stress_index" },
+            ];
+         case "evaluation":
+            return [
+               ...baseColumns,
+               // TODO: 添加综合评测相关的列
+               { title: "健康评分", dataIndex: "health_score", key: "health_score" },
+               { title: "风险评估", dataIndex: "risk_assessment", key: "risk_assessment" },
+               { title: "建议措施", dataIndex: "recommendations", key: "recommendations" },
+               { title: "趋势分析", dataIndex: "trend_analysis", key: "trend_analysis" },
+            ];
+         default:
+            return baseColumns;
+      }
+   };
+
+   const columns = getColumns(filters.dataCategory);
 
    return (
       <div>
@@ -506,6 +559,17 @@ const HistoryData: React.FC = () => {
                      />
                   </Form.Item>
                </Col>
+               <Col span={6}>
+                  <Form.Item label='数据类别' name='dataCategory'>
+                     <Select placeholder='请选择数据类别'>
+                        <Select.Option value='basic'>基础体征</Select.Option>
+                        <Select.Option value='analysis'>体征分析</Select.Option>
+                        <Select.Option value='evaluation'>综合评测</Select.Option>
+                     </Select>
+                  </Form.Item>
+               </Col>
+            </Row>
+            <Row gutter={16}>
                <Col span={6}>
                   <Form.Item label='起止时间' name='dateRange'>
                      <RangePicker showTime />

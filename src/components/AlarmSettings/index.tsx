@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Tabs } from "antd";
 import AlarmForm from "./AlarmForm";
 import MiniProgramForm from "./MiniProgramForm";
+import FingerClipForm from "./FingerClipForm";
 import { defaultSmsConfig, defaultMiniConfig } from "../../types";
 
 const AlarmSettings: React.FC = () => {
@@ -16,6 +17,11 @@ const AlarmSettings: React.FC = () => {
          key: "1",
          label: `报警设置`,
          children: <AlarmForm />,
+      },
+      {
+         key: "2",
+         label: "指夹仪配置",
+         children: <FingerClipForm />,
       },
       {
          key: "3",

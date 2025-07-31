@@ -60,9 +60,11 @@ const SidebarMenu: React.FC = () => {
          navigate("/dashboard/unassigned-bracelets");
       } else if (key === "all-bracelets") {
          navigate("/dashboard/all-bracelets");
+      } else if (key === "registration") {
+         navigate("/dashboard/registration");
       } else if (key.startsWith("room-")) {
          const roomId = key.split("-")[1];
-         navigate(`/dashboard/new-overview/${roomId}`);
+         navigate(`/dashboard/overview/${roomId}`);
       } else {
          navigate(`/dashboard/${key}`);
       }

@@ -25,8 +25,13 @@ const useMenuItems = (
             label: "房间总览",
             children: [
                {
-                  key: "new-overview",
+                  key: "overview",
                   label: "人员总览",
+                  icon: <UserOutlined />,
+               },
+               {
+                  key: "new-overview",
+                  label: "旧版总览",
                   icon: <UserOutlined />,
                },
                ...Object.values(roomsByType)
@@ -57,6 +62,11 @@ const useMenuItems = (
                         icon: <WifiOutlined />,
                      },
                   ],
+               },
+               {
+                  key: "registration",
+                  label: "检录",
+                  icon: <UserOutlined />,
                },
             ],
          },
