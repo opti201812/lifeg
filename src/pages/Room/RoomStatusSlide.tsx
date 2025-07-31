@@ -47,7 +47,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
          return;
       }
       if (latestDeviceData) {
-         if (latestDeviceData.devices?.radar) {
+         if (latestDeviceData.devices?.radar && latestDeviceData.devices.radar.length > 0) {
             setPreviousRadarData(latestDeviceData.devices.radar);
             setPreviousRadarTimestamp(latestDeviceData.time || new Date().toISOString());
          }
@@ -83,7 +83,11 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
       : {};
 
    // 使用最新数据或上一次的数据，并根据过期状态显示
-   const radarData = latestDeviceData?.devices?.radar || previousRadarData || [];
+   // 空数组视同null，避免清除之前的数据
+   const radarData =
+      latestDeviceData?.devices?.radar && latestDeviceData.devices.radar.length > 0
+         ? latestDeviceData.devices.radar
+         : previousRadarData || [];
    const braceletData = latestDeviceData?.devices?.bracelet || previousBraceletData || null;
 
    // 选择环境值较大的雷达数据
