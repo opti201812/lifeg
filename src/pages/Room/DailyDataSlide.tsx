@@ -18,10 +18,11 @@ interface DailyDataSlideProps {
 }
 
 const DailyDataSlide: React.FC<DailyDataSlideProps> = ({ roomInfo, isActive }) => {
-   const [dataDistance, setDataDistance] = React.useState<DataPoint[]>([]);
    const [dataHeartBeat, setDataHeartBeat] = React.useState<DataPoint[]>([]);
    const [dataBreathRate, setDataBreathRate] = React.useState<DataPoint[]>([]);
-   const [dataEnvironment, setDataEnvironment] = React.useState<DataPoint[]>([]);
+   const [dataSystolicPressure, setDataSystolicPressure] = React.useState<DataPoint[]>([]);
+   const [dataDiastolicPressure, setDataDiastolicPressure] = React.useState<DataPoint[]>([]);
+   const [dataBloodOxygen, setDataBloodOxygen] = React.useState<DataPoint[]>([]);
    const roomData = useSelector((state: RootState) => state.data.rooms.find((room) => room.id === roomInfo.roomId)); // Get room data from Redux store
 
    useEffect(() => {
@@ -57,15 +58,21 @@ const DailyDataSlide: React.FC<DailyDataSlideProps> = ({ roomInfo, isActive }) =
 
             const processedData = response.data.map((item: any) => ({
                date: item.time,
-               distance: item.distance / 100, // Convert to meters if needed
                heartbeat: item.bracelet_heart_rate || item.radar_heart_rate || item.below60_heart_rate_count,
                breathing: item.breath_rate,
-               environment: item.environment_interference,
+               systolicPressure: item.bracelet_systolic_pressure,
+               diastolicPressure: item.bracelet_diastolic_pressure,
+               bloodOxygen: item.bracelet_blood_oxygen,
             }));
-            setDataDistance(processedData.map((item: any) => ({ date: item.date, value: item.distance })));
             setDataHeartBeat(processedData.map((item: any) => ({ date: item.date, value: item.heartbeat })));
             setDataBreathRate(processedData.map((item: any) => ({ date: item.date, value: item.breathing })));
-            setDataEnvironment(processedData.map((item: any) => ({ date: item.date, value: item.environment })));
+            setDataSystolicPressure(
+               processedData.map((item: any) => ({ date: item.date, value: item.systolicPressure }))
+            );
+            setDataDiastolicPressure(
+               processedData.map((item: any) => ({ date: item.date, value: item.diastolicPressure }))
+            );
+            setDataBloodOxygen(processedData.map((item: any) => ({ date: item.date, value: item.bloodOxygen })));
             console.log("Refreshed daily data");
          } catch (error) {
             console.error("Error fetching historical data:", error);
@@ -118,35 +125,69 @@ const DailyDataSlide: React.FC<DailyDataSlideProps> = ({ roomInfo, isActive }) =
       };
    };
 
+   const getBloodPressureOptions = (systolicData: DataPoint[], diastolicData: DataPoint[]) => {
+      // 计算最近 24 小时的时间范围
+      const now = dayjs();
+      const oneDayAgo = now.subtract(1, "day");
+
+      return {
+         xAxis: {
+            type: "time",
+            axisLabel: {
+               rotate: 45,
+               formatter: (value: string | number | Date) => {
+                  const date = dayjs(value);
+                  return date.format("HH:mm");
+               },
+            },
+            min: oneDayAgo.valueOf(),
+            max: now.valueOf(),
+         },
+         yAxis: {
+            type: "value",
+            connectNulls: false,
+         },
+         series: [
+            {
+               name: "收缩压",
+               data: systolicData.map((item) => [item.date, item.value]),
+               type: "line",
+               smooth: false,
+               showSymbol: false,
+               lineStyle: { color: "#ff4d4f" },
+            },
+            {
+               name: "舒张压",
+               data: diastolicData.map((item) => [item.date, item.value]),
+               type: "line",
+               smooth: false,
+               showSymbol: false,
+               lineStyle: { color: "#1890ff" },
+            },
+         ],
+         tooltip: {
+            trigger: "axis",
+         },
+      };
+   };
+
    return (
       <Card
          title={
             <RoomInfo roomName={roomInfo.name} age={roomInfo.age} gender={roomInfo.gender} room={roomData} type='日' />
          }
-         style={{ height: 600 }}
+         style={{ height: 900 }}
       >
          <Row gutter={16}>
-            <Col span={6}>
-               <Card title={<div style={{ textAlign: "center" }}>距离</div>}>
-                  {" "}
-                  {/* Center the nested Card title */}
-                  <div style={{ textAlign: "center" }}>
-                     {" "}
-                     {/* Center the content */}
-                     <p>{roomData?.distance} m</p>
-                     <ReactECharts option={getLineOptions(dataDistance, "距离")} style={{ height: 250 }} />
-                  </div>
-               </Card>
-            </Col>
-            <Col span={6}>
-               <Card title={<div style={{ textAlign: "center" }}>心跳</div>}>
+            <Col span={12}>
+               <Card title={<div style={{ textAlign: "center" }}>心率</div>}>
                   <div style={{ textAlign: "center" }}>
                      <p>{roomData?.heartRate} 次/分</p>
-                     <ReactECharts option={getLineOptions(dataHeartBeat, "心跳")} style={{ height: 250 }} />
+                     <ReactECharts option={getLineOptions(dataHeartBeat, "心率")} style={{ height: 250 }} />
                   </div>
                </Card>
             </Col>
-            <Col span={6}>
+            <Col span={12}>
                <Card title={<div style={{ textAlign: "center" }}>呼吸</div>}>
                   <div style={{ textAlign: "center" }}>
                      <p>{roomData?.breathRate} 次/分</p>
@@ -154,11 +195,32 @@ const DailyDataSlide: React.FC<DailyDataSlideProps> = ({ roomInfo, isActive }) =
                   </div>
                </Card>
             </Col>
-            <Col span={6}>
-               <Card title={<div style={{ textAlign: "center" }}>环境干扰</div>}>
+         </Row>
+         <Row gutter={16}>
+            <Col span={12}>
+               <Card title={<div style={{ textAlign: "center" }}>血压</div>}>
                   <div style={{ textAlign: "center" }}>
-                     <p>{roomData?.environment || "-"}</p>
-                     <ReactECharts option={getLineOptions(dataEnvironment, "环境干扰")} style={{ height: 250 }} />
+                     <p>
+                        {(roomData as any)?.braceletData?.systolicPressure &&
+                        (roomData as any)?.braceletData?.diastolicPressure
+                           ? `${(roomData as any).braceletData.diastolicPressure}/${
+                                (roomData as any).braceletData.systolicPressure
+                             }`
+                           : "-"}{" "}
+                        mmHg
+                     </p>
+                     <ReactECharts
+                        option={getBloodPressureOptions(dataSystolicPressure, dataDiastolicPressure)}
+                        style={{ height: 250 }}
+                     />
+                  </div>
+               </Card>
+            </Col>
+            <Col span={12}>
+               <Card title={<div style={{ textAlign: "center" }}>血氧</div>}>
+                  <div style={{ textAlign: "center" }}>
+                     <p>{(roomData as any)?.braceletData?.bloodOxygen || "-"} %</p>
+                     <ReactECharts option={getLineOptions(dataBloodOxygen, "血氧")} style={{ height: 250 }} />
                   </div>
                </Card>
             </Col>

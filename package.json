@@ -8,7 +8,8 @@
     "build:dev": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/dist/client/build' react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "build:prod": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/dist/client/build' react-scripts build"
+    "build:prod": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/dist/client/build' react-scripts build",
+    "build:1009": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard-1009/Backend/dist/client/build' react-scripts build"
   },
   "keywords": [],
   "author": "",

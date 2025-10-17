@@ -84,10 +84,10 @@ const dataSlice = createSlice({
       },
       addAlarm: (state, action: PayloadAction<any>) => {
          const newAlarm = { ...action.payload, createTimeStamp: Date.now() };
-         const existingAlarmIndex = state.alarms.findIndex((alarm) => alarm.roomId === newAlarm.roomId);
+         const existingPersonnelIndex = state.alarms.findIndex((alarm) => alarm.personnelId === newAlarm.personnelId);
 
-         if (existingAlarmIndex !== -1) {
-            state.alarms[existingAlarmIndex] = newAlarm;
+         if (existingPersonnelIndex !== -1) {
+            state.alarms[existingPersonnelIndex] = newAlarm;
          } else {
             state.alarms.push(newAlarm);
          }

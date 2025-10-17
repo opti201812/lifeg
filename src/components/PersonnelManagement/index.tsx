@@ -45,9 +45,21 @@ const PersonnelManagement: React.FC = () => {
          title: "病史",
          dataIndex: "medical_history",
          key: "medical_history",
-         render: (value: string) => {
-            const matchingHistory = MEDICAL_HISTORIES.find((item) => item.value === value);
-            return matchingHistory ? matchingHistory.label : value; // Display label or original value if not found
+         render: (value: string | string[]) => {
+            // 如果value是数组，形如['d1','d0']
+            if (Array.isArray(value)) {
+               const labels = value.map((v) => {
+                  const matchingHistory = MEDICAL_HISTORIES.find((item) => item.value === v);
+                  return matchingHistory ? matchingHistory.label : v; // 找到则返回label，没找到则返回原值
+               });
+               // 如果有多项，用逗号分隔合并成字符串
+               return labels.join(", ");
+            }
+            // 如果value是字符串
+            else {
+               const matchingHistory = MEDICAL_HISTORIES.find((item) => item.value === value);
+               return matchingHistory ? matchingHistory.label : value; // Display label or original value if not found
+            }
          },
       },
       { title: "其它病史/备注", dataIndex: "remark", key: "remark" },

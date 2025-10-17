@@ -30,6 +30,10 @@ export interface BraceletDeviceData {
    battery?: number;
    sos?: boolean;
    status?: string;
+   systolicPressure?: number;
+   diastolicPressure?: number;
+   bloodOxygen?: number;
+   bodyTemperature?: number;
    timestamp: number;
    // 其他手环字段...
 }

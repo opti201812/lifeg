@@ -1,21 +1,7 @@
 // pages/Room/index.tsx
 
 import React, { useState, useEffect, useRef } from "react";
-import {
-   Carousel,
-   message,
-   Button,
-   Modal,
-   Form,
-   InputNumber,
-   Input,
-   Select,
-   Row,
-   Col,
-   Menu,
-   Dropdown,
-   Tooltip,
-} from "antd";
+import { Carousel, message, Button, Modal, Form, Tooltip } from "antd";
 import { useDispatch, useSelector } from "react-redux";
 import DailyDataSlide from "./DailyDataSlide";
 import WeeklyDataSlide from "./WeeklyDataSlide";
@@ -46,28 +32,11 @@ const RoomPage: React.FC<{
    }>({ name: "", age: 0, gender: "", roomId: 0, personnelId: personnelId, associationId: "" });
    const roomData = useSelector((state: RootState) => state.data.rooms.find((room) => room.id === roomId));
    const carouselRef = useRef<any>(null);
-   const dispatch = useDispatch();
    const [isMonitoringEnabled, setIsMonitoringEnabled] = useState(roomData?.enabled || false);
    const [isModalVisible, setIsModalVisible] = useState(false);
-   const [avgHeartRateIn5Minutes, setAvgHeartRateIn5Minutes] = useState<number>(0);
-   const [avgBreathRateIn5Minutes, setAvgBreathRateIn5Minutes] = useState<number>(0);
    const [form] = Form.useForm();
-   const [personnelList, setPersonnelList] = useState<any[]>([]);
    const [currentSlide, setCurrentSlide] = useState(initialSlide || 0);
    const navigate = useNavigate();
-
-   useEffect(() => {
-      const fetchPersonnel = async () => {
-         try {
-            const response = await axios.get(`${config.backend.url}/personnel`);
-            setPersonnelList(response.data);
-         } catch (error) {
-            console.error("Error fetching personnel:", error);
-            message.error("获取人员信息失败");
-         }
-      };
-      fetchPersonnel();
-   }, []);
 
    useEffect(() => {
       if (!roomId) return;
@@ -154,8 +123,12 @@ const RoomPage: React.FC<{
             // setRoomStatus({ ...response.data, breath_rate, heart_rate_resting, heart_rate, breath_rate_resting });
             setIsMonitoringEnabled(response.data.enabled);
             if (heart_rate === 0 || breath_rate === 0 || heart_rate_resting === 0 || breath_rate_resting === 0) {
-               setAvgHeartRateIn5Minutes(avgHeartRate);
-               setAvgBreathRateIn5Minutes(avgBreathRate);
+               form.setFieldsValue({
+                  heartRate: avgHeartRate,
+                  breathRate: avgBreathRate,
+                  heartRateResting: avgHeartRate - 20,
+                  breathRateResting: avgBreathRate - 8,
+               });
             }
          } catch (error) {
             console.error("Error fetching room status:", error);
@@ -163,34 +136,6 @@ const RoomPage: React.FC<{
       };
       fetchRoomStatus();
    }, [roomId]);
-
-   const handleToggleMonitoring = async () => {
-      const newEnabledStatus = !isMonitoringEnabled;
-      if (!newEnabledStatus || roomData?.personnel_id) {
-         await toggleMonitoring(newEnabledStatus);
-      } else {
-         setIsModalVisible(true);
-         form.setFieldsValue({
-            personnel_name: "临时人员" + Date.now().toString().slice(-4),
-         });
-      }
-   };
-
-   const toggleMonitoring = async (enabled: boolean) => {
-      try {
-         await axios.put(`${config.backend.url}/rooms/${roomId}`, { enabled, personnel_id: personnelId });
-         setIsMonitoringEnabled(enabled);
-         setRoomInfo((roomInfo) => ({
-            ...roomInfo,
-            personnelId: personnelId || null,
-         }));
-         dispatch(updateRoomData({ roomId, data: { ...roomData, enabled, personnel_id: personnelId } }));
-         message.success(`已切换为：${enabled ? "设防" : "撤防"}状态`);
-      } catch (error) {
-         console.error("Error toggling monitoring:", error);
-         message.error("切换监控状态失败");
-      }
-   };
 
    useEffect(() => {
       // 当 initialSlide prop 发生变化时，或者组件首次加载且 initialSlide 有效时

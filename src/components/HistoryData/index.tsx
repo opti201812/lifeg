@@ -20,6 +20,11 @@ interface HistoricalData {
    isAlarm: boolean;
    dateTime: string;
    time: string;
+   // 手环新增字段
+   bracelet_systolic_pressure?: number;
+   bracelet_diastolic_pressure?: number;
+   bracelet_blood_oxygen?: number;
+   bracelet_body_temperature?: number;
 }
 
 const HistoryData: React.FC = () => {
@@ -208,6 +213,11 @@ const HistoryData: React.FC = () => {
             tamper_status,
             button_status,
             personnelId,
+            // 手环新增字段
+            bracelet_systolic_pressure,
+            bracelet_diastolic_pressure,
+            bracelet_blood_oxygen,
+            bracelet_body_temperature,
          } = item;
 
          return {
@@ -217,6 +227,12 @@ const HistoryData: React.FC = () => {
             雷达心率: radar_heart_rate,
             呼吸: breath_rate,
             距离: distance,
+            血压:
+               bracelet_systolic_pressure && bracelet_diastolic_pressure
+                  ? `${bracelet_diastolic_pressure}/${bracelet_systolic_pressure}`
+                  : "-",
+            血氧: bracelet_blood_oxygen ? `${bracelet_blood_oxygen}%` : "-",
+            体温: bracelet_body_temperature ? `${bracelet_body_temperature}°C` : "-",
             环境干扰: environment_interference,
             SOS状态: button_status,
             手环状态: tamper_status,
@@ -340,6 +356,24 @@ const HistoryData: React.FC = () => {
                                     case "apnea":
                                        displayValue = parseInt(String(value)) > 0 ? "是" : "否";
                                        break;
+                                    case "bracelet_systolic_pressure":
+                                    case "bracelet_diastolic_pressure":
+                                    case "bloodPressure":
+                                       // 血压特殊处理
+                                       if (col.key === "bloodPressure") {
+                                          const systolic = row.bracelet_systolic_pressure;
+                                          const diastolic = row.bracelet_diastolic_pressure;
+                                          displayValue = systolic && diastolic ? `${diastolic}/${systolic}` : "-";
+                                       } else {
+                                          displayValue = String(value || "");
+                                       }
+                                       break;
+                                    case "bracelet_blood_oxygen":
+                                       displayValue = value ? `${value}%` : "-";
+                                       break;
+                                    case "bracelet_body_temperature":
+                                       displayValue = value ? `${value}°C` : "-";
+                                       break;
                                     case "time":
                                        displayValue = dayjs(String(value)).format("YYYY-MM-DD HH:mm:ss");
                                        break;
@@ -428,6 +462,29 @@ const HistoryData: React.FC = () => {
          render: (text: string) => (parseInt(text) > 0 ? "是" : "否"),
       },
       { title: "环境干扰", dataIndex: "environment_interference", key: "environment" },
+      {
+         title: <Tooltip title='收缩压/舒张压 (mmHg)'>血压</Tooltip>,
+         key: "bloodPressure",
+         render: (_: any, record: HistoricalData) => {
+            const { bracelet_systolic_pressure, bracelet_diastolic_pressure } = record;
+            if (bracelet_systolic_pressure && bracelet_diastolic_pressure) {
+               return `${bracelet_diastolic_pressure}/${bracelet_systolic_pressure}`;
+            }
+            return "-";
+         },
+      },
+      {
+         title: <Tooltip title='血氧饱和度 (%)'>血氧</Tooltip>,
+         dataIndex: "bracelet_blood_oxygen",
+         key: "bracelet_blood_oxygen",
+         render: (value: number) => (value ? `${value}%` : "-"),
+      },
+      {
+         title: <Tooltip title='体温 (°C)'>体温</Tooltip>,
+         dataIndex: "bracelet_body_temperature",
+         key: "bracelet_body_temperature",
+         render: (value: number) => (value ? `${value}°C` : "-"),
+      },
       {
          title: "日期时间",
          dataIndex: "time",

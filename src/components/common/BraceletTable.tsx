@@ -50,6 +50,26 @@ const BraceletTable: React.FC<BraceletTableProps> = ({ data, loading, actionType
          },
       },
       {
+         title: "血压",
+         key: "bloodPressure",
+         render: (_: any, record: any) => {
+            const { systolicPressure, diastolicPressure } = record;
+            return systolicPressure && diastolicPressure ? `${diastolicPressure}/${systolicPressure} mmHg` : "-";
+         },
+      },
+      {
+         title: "血氧",
+         dataIndex: "bloodOxygen",
+         key: "bloodOxygen",
+         render: (value: number) => (value ? `${value}%` : "-"),
+      },
+      {
+         title: "体温",
+         dataIndex: "bodyTemperature",
+         key: "bodyTemperature",
+         render: (value: number) => (value ? `${value}°C` : "-"),
+      },
+      {
          title: "更新时间",
          dataIndex: "lastUpdate",
          key: "lastUpdate",

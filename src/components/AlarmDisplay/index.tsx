@@ -22,6 +22,11 @@ interface AlarmData {
    handlingMethod: string;
    handlingTime: string;
    dateTime: string;
+   // 手环新增字段
+   systolic_pressure?: number;
+   diastolic_pressure?: number;
+   blood_oxygen?: number;
+   body_temperature?: number;
 }
 
 const AlarmDisplay: React.FC = () => {
@@ -210,6 +215,12 @@ const AlarmDisplay: React.FC = () => {
          心率: item.heart_rate,
          呼吸: item.breath_rate,
          雷达距离: (parseInt(item.distance) / 100).toFixed(2),
+         血压:
+            item.systolic_pressure && item.diastolic_pressure
+               ? `${item.diastolic_pressure}/${item.systolic_pressure}`
+               : "-",
+         血氧: item.blood_oxygen ? `${item.blood_oxygen}%` : "-",
+         体温: item.body_temperature ? `${item.body_temperature}°C` : "-",
          报警: item.alarm_level ? "是" : "否",
          体位: item.pose,
          环境: item.environment,
@@ -332,6 +343,24 @@ const AlarmDisplay: React.FC = () => {
                                        case "apnea":
                                           displayValue = parseInt(String(value)) > 0 ? "是" : "否";
                                           break;
+                                       case "systolic_pressure":
+                                       case "diastolic_pressure":
+                                       case "bloodPressure":
+                                          // 血压特殊处理
+                                          if (col.key === "bloodPressure") {
+                                             const systolic = row.systolic_pressure;
+                                             const diastolic = row.diastolic_pressure;
+                                             displayValue = systolic && diastolic ? `${diastolic}/${systolic}` : "-";
+                                          } else {
+                                             displayValue = String(value || "");
+                                          }
+                                          break;
+                                       case "blood_oxygen":
+                                          displayValue = value ? `${value}%` : "-";
+                                          break;
+                                       case "body_temperature":
+                                          displayValue = value ? `${value}°C` : "-";
+                                          break;
                                        case "alarm_level":
                                           switch (String(value)) {
                                              case "1":
@@ -429,6 +458,29 @@ const AlarmDisplay: React.FC = () => {
          render: (text: string) => (parseInt(text) > 0 ? "是" : "否"),
       },
       { title: "环境干扰", dataIndex: "environment", key: "environment" },
+      {
+         title: <Tooltip title='收缩压/舒张压 (mmHg)'>血压</Tooltip>,
+         key: "bloodPressure",
+         render: (_: any, record: AlarmData) => {
+            const { systolic_pressure, diastolic_pressure } = record;
+            if (systolic_pressure && diastolic_pressure) {
+               return `${diastolic_pressure}/${systolic_pressure}`;
+            }
+            return "-";
+         },
+      },
+      {
+         title: <Tooltip title='血氧饱和度 (%)'>血氧</Tooltip>,
+         dataIndex: "blood_oxygen",
+         key: "blood_oxygen",
+         render: (value: number) => (value ? `${value}%` : "-"),
+      },
+      {
+         title: <Tooltip title='体温 (°C)'>体温</Tooltip>,
+         dataIndex: "body_temperature",
+         key: "body_temperature",
+         render: (value: number) => (value ? `${value}°C` : "-"),
+      },
       {
          title: "告警级别",
          dataIndex: "alarm_level",

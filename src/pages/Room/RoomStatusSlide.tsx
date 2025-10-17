@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { Card, Row, Col, message } from "antd";
-import { HeartOutlined } from "@ant-design/icons";
+import { HeartOutlined, ThunderboltOutlined, FireOutlined, HeatMapOutlined } from "@ant-design/icons";
 import axios from "axios";
 import config from "../../config/index";
 import { RootState } from "../../store/index.js";
@@ -71,7 +71,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
    const now = Date.now();
    const isRadarDataExpired = previousRadarTimestamp ? now - new Date(previousRadarTimestamp).getTime() > 10000 : true;
    const isBraceletDataExpired = previousBraceletTimestamp
-      ? now - new Date(previousBraceletTimestamp).getTime() > 10000
+      ? now - new Date(previousBraceletTimestamp).getTime() > 60000
       : true;
 
    // 使用 theme 中的颜色值
@@ -220,7 +220,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
          // style={{ height: 600 }}
       >
          <div>
-            {/* 第一行：手环数据 */}
+            {/* 第一行：手环健康数据 */}
             <div style={{ ...styles.containers.braceletSection, ...staleStyle }}>
                <div style={styles.text.sectionTitle}>手环数据</div>
                <Row gutter={16}>
@@ -234,13 +234,47 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
                   </Col>
                   <Col span={6}>
                      {renderCard(
+                        "血压",
+                        <ThunderboltOutlined style={{ ...styles.icons.heartIcon, color: "#722ed1" }} />,
+                        `${
+                           !isBraceletDataExpired
+                              ? braceletData?.systolicPressure && braceletData?.diastolicPressure
+                                 ? `${braceletData.diastolicPressure}/${braceletData.systolicPressure}`
+                                 : "-"
+                              : "-"
+                        } mmHg`,
+                        styles.heights.bracelet
+                     )}
+                  </Col>
+                  <Col span={6}>
+                     {renderCard(
+                        "血氧",
+                        <FireOutlined style={{ ...styles.icons.heartIcon, color: "#52c41a" }} />,
+                        `${!isBraceletDataExpired ? braceletData?.bloodOxygen || "-" : "-"} %`,
+                        styles.heights.bracelet
+                     )}
+                  </Col>
+                  <Col span={6}>
+                     {renderCard(
+                        "体温",
+                        <HeatMapOutlined style={{ ...styles.icons.heartIcon, color: "#fa8c16" }} />,
+                        `${!isBraceletDataExpired ? braceletData?.bodyTemperature || "-" : "-"} °C`,
+                        styles.heights.bracelet
+                     )}
+                  </Col>
+               </Row>
+
+               {/* 第二行：手环设备状态 */}
+               <Row gutter={16} style={{ marginTop: 16 }}>
+                  <Col span={8}>
+                     {renderCard(
                         "电池状态",
                         <img src='/images/battery.png' alt='Battery' style={styles.icons.imageIcon} />,
                         `${!isBraceletDataExpired ? (batteryStatus !== null ? `${batteryStatus}` : "-") : "-"}`,
                         styles.heights.bracelet
                      )}
                   </Col>
-                  <Col span={6}>
+                  <Col span={8}>
                      {renderCard(
                         "SOS",
                         <img src='/images/sos.png' alt='SOS' style={styles.icons.imageIcon} />,
@@ -248,7 +282,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
                         styles.heights.bracelet
                      )}
                   </Col>
-                  <Col span={6}>
+                  <Col span={8}>
                      {renderCard(
                         "状态",
                         <img src='/images/status.png' alt='Status' style={styles.icons.imageIcon} />,

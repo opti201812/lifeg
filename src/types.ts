@@ -73,6 +73,10 @@ export interface BraceletData {
    heartRate: number;
    breathRate: number;
    batteryLevel: number;
+   systolicPressure?: number;
+   diastolicPressure?: number;
+   bloodOxygen?: number;
+   bodyTemperature?: number;
    lastUpdate: number;
 }
 
