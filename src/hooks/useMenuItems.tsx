@@ -36,28 +36,6 @@ const useMenuItems = (
                      label: room.name,
                      icon: <HomeOutlined />,
                   })),
-               {
-                  key: "all-bracelets",
-                  label: "全部手环",
-                  icon: <WifiOutlined />,
-                  children: [
-                     {
-                        key: "armed-bracelets",
-                        label: "已设防手环",
-                        icon: <WifiOutlined />,
-                     },
-                     {
-                        key: "assigned-bracelets",
-                        label: "已分配手环",
-                        icon: <WifiOutlined />,
-                     },
-                     {
-                        key: "unassigned-bracelets",
-                        label: "未分配手环",
-                        icon: <WifiOutlined />,
-                     },
-                  ],
-               },
             ],
          },
          { key: "history", icon: <HistoryOutlined />, label: "历史数据" },

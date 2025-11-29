@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Card, Row, Col, Tag, Button } from "antd";
-import { HeartOutlined, BellOutlined, FireOutlined } from "@ant-design/icons";
+import { HeartOutlined, BellOutlined } from "@ant-design/icons";
 import { RoomPersonnel } from "../../types";
 import { getTagInfo, getIcon } from "../../utils/roomHelpers";
 
@@ -145,63 +145,27 @@ const PersonnelCard: React.FC<PersonnelCardProps> = ({
                   </Button>
                </div>
             </div>
-            {/* 第一行：心率、血压、血氧 */}
+            {/* 第一行：心率、呼吸、距离 */}
             <Row gutter={8} style={{ marginTop: 16 }}>
-               <Col span={7}>
+               <Col span={8}>
                   <div style={{ textAlign: "center" }}>
                      <HeartOutlined style={{ fontSize: 28, color: "#ff4d4f" }} />
                      <p style={{ fontSize: 14, fontWeight: "bold", margin: "4px 0 0 0" }}>{displayHeartRate} 次</p>
                   </div>
                </Col>
-               <Col span={10}>
-                  <div style={{ textAlign: "center" }}>
-                     <span style={{ fontSize: 23, color: "#722ed1" }}>🩸</span>
-                     <p style={{ fontSize: 14, fontWeight: "bold", margin: "2px 0 0 0", lineHeight: 1.2 }}>
-                        {displayBraceletData?.systolicPressure && displayBraceletData?.diastolicPressure
-                           ? `${displayBraceletData.diastolicPressure}/${displayBraceletData.systolicPressure}`
-                           : "-"}
-                        <span style={{ fontSize: 10 }}> mmHg</span>
-                     </p>
-                  </div>
-               </Col>
-               <Col span={7}>
-                  <div style={{ textAlign: "center" }}>
-                     <FireOutlined style={{ fontSize: 28, color: "#52c41a" }} />
-                     <p style={{ fontSize: 14, fontWeight: "bold", margin: "2px 0 0 0" }}>
-                        {displayBraceletData?.bloodOxygen || "-"}%
-                     </p>
-                  </div>
-               </Col>
-            </Row>
-
-            {/* 第二行：呼吸、体温、距离 */}
-            <Row gutter={8} style={{ marginTop: 12 }}>
-               <Col span={7}>
+               <Col span={8}>
                   <div style={{ textAlign: "center" }}>
                      <img src={"/images/ll.png"} alt='呼吸率图标' style={{ width: 28, height: 28 }} />
                      <p style={{ fontSize: 14, fontWeight: "bold", margin: "2px 0 0 0" }}>{breathRate} 次</p>
                   </div>
                </Col>
-               <Col span={10}>
-                  <div style={{ textAlign: "center" }}>
-                     <span style={{ fontSize: 23, color: "#fa8c16" }}>🌡️</span>
-                     <p style={{ fontSize: 14, fontWeight: "bold", margin: "2px 0 0 0" }}>
-                        {displayBraceletData?.bodyTemperature || "-"}°C
-                     </p>
-                  </div>
-               </Col>
-               <Col span={7}>
+               <Col span={8}>
                   <div style={{ textAlign: "center" }}>
                      <img src={"/images/radar2.png"} alt='雷达图标' style={{ width: 28, height: 28 }} />
                      <p style={{ fontSize: 14, fontWeight: "bold", margin: "2px 0 0 0" }}>
                         {distance === "-" ? "-" : (distance / 100).toFixed(2) + "米"}
                      </p>
                   </div>
-               </Col>
-            </Row>
-            <Row style={{ marginTop: 16 }}>
-               <Col span={24} style={{ textAlign: "center" }}>
-                  <p style={{ fontSize: 12, fontWeight: "bold", margin: 0 }}>{roomPersonnel.braceletStatus}</p>
                </Col>
             </Row>
          </Card>

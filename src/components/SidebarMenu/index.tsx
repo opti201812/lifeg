@@ -54,12 +54,6 @@ const SidebarMenu: React.FC = () => {
          navigate("/dashboard/room-type-management");
       } else if (key === "radar-management") {
          navigate("/dashboard/radar-management");
-      } else if (key === "assigned-bracelets") {
-         navigate("/dashboard/assigned-bracelets");
-      } else if (key === "unassigned-bracelets") {
-         navigate("/dashboard/unassigned-bracelets");
-      } else if (key === "all-bracelets") {
-         navigate("/dashboard/all-bracelets");
       } else if (key.startsWith("room-")) {
          const roomId = key.split("-")[1];
          navigate(`/dashboard/new-overview/${roomId}`);
