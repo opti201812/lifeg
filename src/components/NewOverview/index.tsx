@@ -122,7 +122,7 @@ const NewOverview: React.FC<NewOverviewProps> = () => {
          // 获取SMS配置
          const smsConfigResponse = await axios.get(`${config.backend.url}/smsconfig`);
          const isPersonNameVisibleConfig = smsConfigResponse.data.find(
-            (config: any) => config.config_name === "isPersonNameVisible"
+            (config: any) => config.config_name === "isPersonNameVisible",
          );
          setShowPersonnelName(isPersonNameVisibleConfig?.value === "true" || isPersonNameVisibleConfig?.value === true);
       } catch (error) {
@@ -255,7 +255,7 @@ const NewOverview: React.FC<NewOverviewProps> = () => {
             return { text: "采集中", color: "green" };
          }
       },
-      [isInRestrictedSchedule]
+      [isInRestrictedSchedule],
    );
 
    // 获取图标
@@ -436,7 +436,7 @@ const NewOverview: React.FC<NewOverviewProps> = () => {
 
          if (filteredRadarData.length > 0) {
             selectedRadarData = filteredRadarData.reduce((prev: RadarData, current: RadarData) =>
-               prev.environmentInterference > current.environmentInterference ? prev : current
+               prev.environmentInterference > current.environmentInterference ? prev : current,
             );
          }
       }
@@ -447,7 +447,9 @@ const NewOverview: React.FC<NewOverviewProps> = () => {
       const distance = selectedRadarData ? selectedRadarData.distance : "-";
       const environmentInterference = selectedRadarData ? selectedRadarData.environmentInterference : "-";
 
-      // 手环状态
+      // 手环状态：从 associations 根据 associationId 取 braceletId 判断是否已分配手环
+      const association = associations.find((a) => String(a.id) === String(associationId));
+      const hasBracelet = !!association?.braceletId;
       const tamperStatus = braceletData ? braceletData.tamperStatus : null;
       const braceletStatus = getBraceletStatusText(
          {
@@ -455,7 +457,8 @@ const NewOverview: React.FC<NewOverviewProps> = () => {
             environmentInterference,
             breathRate,
          },
-         tamperStatus
+         tamperStatus,
+         hasBracelet,
       );
 
       return (
@@ -585,7 +588,9 @@ const NewOverview: React.FC<NewOverviewProps> = () => {
                </Row>
                <Row style={{ marginTop: 16 }}>
                   <Col span={24} style={{ textAlign: "center" }}>
-                     <p style={{ fontSize: 12, fontWeight: "bold", margin: 0 }}>{braceletStatus}</p>
+                     <p style={{ fontSize: 12, fontWeight: "bold", margin: 0, whiteSpace: "pre-line" }}>
+                        {braceletStatus}
+                     </p>
                   </Col>
                </Row>
             </Card>
