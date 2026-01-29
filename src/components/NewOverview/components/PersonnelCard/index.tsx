@@ -199,11 +199,13 @@ const PersonnelCard: React.FC<PersonnelCardProps> = ({
                   </div>
                </Col>
             </Row>
-            <Row style={{ marginTop: 16 }}>
-               <Col span={24} style={{ textAlign: "center" }}>
-                  <p style={{ fontSize: 12, fontWeight: "bold", margin: 0 }}>{roomPersonnel.braceletStatus}</p>
-               </Col>
-            </Row>
+             <Row style={{ marginTop: 16 }}>
+                <Col span={24} style={{ textAlign: "center" }}>
+                   <p style={{ fontSize: 12, fontWeight: "bold", margin: 0, whiteSpace: "pre-line" }}>
+                      {roomPersonnel.braceletStatus}
+                   </p>
+                </Col>
+             </Row>
          </Card>
       </Col>
    );

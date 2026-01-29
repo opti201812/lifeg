@@ -34,16 +34,19 @@ export const usePersonnelData = (roomId?: string) => {
 
          const deviceInfo = processPersonnelDeviceData(roomPersonnel.personnel.id, personDeviceData, radars, now);
 
-         // 手环状态
-         const tamperStatus = deviceInfo.braceletData ? deviceInfo.braceletData.tamperStatus : null;
-         const braceletStatus = getBraceletStatusText(
-            {
-               heartRate: deviceInfo.heartRate,
-               environmentInterference: deviceInfo.environmentInterference,
-               breathRate: deviceInfo.breathRate,
-            },
-            tamperStatus
-         );
+// 手环状态：从 associations 根据 associationId 取 braceletId 判断是否已分配手环
+          const association = associations.find((a) => String(a.id) === String(roomPersonnel.associationId));
+          const hasBracelet = !!association?.braceletId;
+          const tamperStatus = deviceInfo.braceletData ? deviceInfo.braceletData.tamperStatus : null;
+          const braceletStatus = getBraceletStatusText(
+             {
+                heartRate: deviceInfo.heartRate,
+                environmentInterference: deviceInfo.environmentInterference,
+                breathRate: deviceInfo.breathRate,
+             },
+             tamperStatus,
+             hasBracelet
+          );
 
          return {
             ...roomPersonnel,
