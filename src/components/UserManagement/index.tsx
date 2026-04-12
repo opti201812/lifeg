@@ -32,7 +32,7 @@ const UserManagement: React.FC = () => {
       const fetchRooms = async () => {
          try {
             const response = await axios.get(`${config.backend.url}/rooms`);
-            setRooms(response.data || []);
+            setRooms(response.data?.data || response.data || []);
          } catch (error) {
             console.error("Error fetching rooms:", error);
             message.error("获取房间列表失败！");

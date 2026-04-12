@@ -53,15 +53,17 @@ const AssignedBracelets: React.FC = () => {
             : [];
 
          // 创建人员映射
+         const personnelData = personnelResponse.data?.data || personnelResponse.data || [];
+         const roomsData = roomsResponse.data?.data || roomsResponse.data || [];
          const personnelMap: { [key: number]: any } = {};
-         personnelResponse.data.forEach((person: any) => {
+         personnelData.forEach((person: any) => {
             personnelMap[person.id] = person;
          });
          setPersonnel(personnelMap);
 
          // 创建房间映射
          const roomsMap: { [key: number]: any } = {};
-         roomsResponse.data.forEach((room: any) => {
+         roomsData.forEach((room: any) => {
             roomsMap[room.id] = room;
          });
          setRooms(roomsMap);
@@ -122,7 +124,6 @@ const AssignedBracelets: React.FC = () => {
    }, [modalVisible]);
 
    const handleAction = async (type: string, record: any) => {
-      console.log("==> ~ record:", record);
       if (type === "reclaim") {
          Modal.confirm({
             title: "确认收回手环？",
@@ -147,14 +148,16 @@ const AssignedBracelets: React.FC = () => {
                            ? associationsResponse.data
                            : [];
 
+                        const personnelData = personnelResponse.data?.data || personnelResponse.data || [];
+                        const roomsData = roomsResponse.data?.data || roomsResponse.data || [];
                         const personnelMap: { [key: number]: any } = {};
-                        personnelResponse.data.forEach((person: any) => {
+                        personnelData.forEach((person: any) => {
                            personnelMap[person.id] = person;
                         });
                         setPersonnel(personnelMap);
 
                         const roomsMap: { [key: number]: any } = {};
-                        roomsResponse.data.forEach((room: any) => {
+                        roomsData.forEach((room: any) => {
                            roomsMap[room.id] = room;
                         });
                         setRooms(roomsMap);
@@ -237,7 +240,6 @@ const AssignedBracelets: React.FC = () => {
             }}
             onCancel={() => setModalVisible(false)}
             onSubmit={(values) => {
-               console.log("设防操作:", values);
                setModalVisible(false);
             }}
          />

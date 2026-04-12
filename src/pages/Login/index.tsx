@@ -38,6 +38,11 @@ const Login: React.FC = () => {
          try {
             const response = await axios.post(`${config.backend.url}/login`, {}, { withCredentials: true });
             if (response.data.success && response.data.message === "Already logged in") {
+               // 存储 token 到 sessionStorage（用于 WebSocket 连接）
+               if (response.data.token) {
+                  sessionStorage.setItem("token", response.data.token);
+               }
+               
                dispatch(
                   setCurrentUser({
                      ...response.data.user, // Spread all user properties
@@ -46,7 +51,7 @@ const Login: React.FC = () => {
                );
 
                if (response.data.user.role === "admin") {
-                  navigate("/dashboard/new-overview");
+                  navigate("/dashboard/overview");
                } else {
                   navigate("/dashboard/room");
                }
@@ -71,11 +76,17 @@ const Login: React.FC = () => {
                verificationCode: values.verificationCode, // Include verification code in request
             },
             {
-               withCredentials: false, // when user click to login, not include credentials in request
+               withCredentials: true, // 跨域请求必须设置为 true 才能接收和发送 Cookie
             }
          );
 
          if (response.status === 200) {
+            // 存储 token 到 sessionStorage（用于 WebSocket 连接）
+            // Cookie 中的 token 用于 HTTP 请求的自动认证
+            if (response.data.token) {
+               sessionStorage.setItem("token", response.data.token);
+            }
+            
             dispatch(
                setCurrentUser({
                   ...response.data.user, // Spread all user properties
@@ -84,7 +95,7 @@ const Login: React.FC = () => {
             );
 
             if (response.data.user.role === "admin") {
-               navigate("/dashboard/new-overview");
+               navigate("/dashboard/overview");
             } else {
                navigate("/dashboard/room");
             }

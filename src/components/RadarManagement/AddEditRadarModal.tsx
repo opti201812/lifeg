@@ -6,8 +6,10 @@ import config from "../../config";
 interface Radar {
    id: number;
    person_pose: string;
-   distance: number;
+   targetDistance?: number | null; // 目标距离（雷达与目标物之间的距离）
+   enabled?: boolean;
    remark?: string;
+   createdAt?: string;
 }
 
 interface AddEditRadarModalProps {
@@ -31,10 +33,13 @@ const AddEditRadarModal: React.FC<AddEditRadarModalProps> = ({
    useEffect(() => {
       if (isVisible) {
          if (isEditing && editingRadar) {
+            // 读取目标距离
+            const targetDistance = editingRadar.targetDistance ?? undefined;
+
             form.setFieldsValue({
                id: editingRadar.id,
                person_pose: editingRadar.person_pose,
-               distance: editingRadar.distance,
+               targetDistance: targetDistance !== null && targetDistance !== undefined ? targetDistance : undefined,
                remark: editingRadar.remark,
             });
          } else {
@@ -51,18 +56,29 @@ const AddEditRadarModal: React.FC<AddEditRadarModalProps> = ({
          const radarData = {
             id: values.id,
             person_pose: values.person_pose,
-            distance: values.distance,
             remark: values.remark || "",
+            targetDistance: values.targetDistance ?? 0,
          };
 
+         // 先保存雷达基本信息
          if (isEditing) {
-            // TODO: 调用更新雷达距离的API
             await axios.put(`${config.backend.url}/rooms/radars/${editingRadar?.id}`, radarData);
             message.success("更新雷达成功！");
          } else {
-            // TODO: 调用新增雷达的API
             await axios.post(`${config.backend.url}/rooms/radars`, radarData);
             message.success("新增雷达成功！");
+         }
+
+         // 如果有目标距离，单独调用目标距离API
+         if (values.targetDistance !== undefined && values.targetDistance !== null && values.targetDistance !== editingRadar?.targetDistance) {
+            try {
+               await axios.post(`${config.backend.url}/radar/${values.id}/target-distance`, {
+                  targetDistance: values.targetDistance,
+               });
+            } catch (distanceError) {
+               console.warn("设置目标距离失败，但雷达已保存:", distanceError);
+               message.warning("雷达配置已保存，但目标距离设置失败");
+            }
          }
 
          onSuccess();
@@ -91,7 +107,7 @@ const AddEditRadarModal: React.FC<AddEditRadarModalProps> = ({
       >
          <Form form={form} layout='vertical'>
             <Form.Item name='id' label='雷达ID' rules={[{ required: true, message: "请输入雷达ID" }]}>
-               <Input placeholder='请输入雷达ID' />
+               <Input placeholder='请输入雷达ID' disabled={isEditing} />
             </Form.Item>
 
             <Form.Item name='person_pose' label='人员姿态' rules={[{ required: true, message: "请选择人员姿态" }]}>
@@ -101,8 +117,20 @@ const AddEditRadarModal: React.FC<AddEditRadarModalProps> = ({
                </Select>
             </Form.Item>
 
-            <Form.Item name='distance' label='距离' rules={[{ required: true, message: "请输入距离" }]}>
-               <InputNumber min={0} addonAfter='米' style={{ width: "100%" }} placeholder='请输入距离' />
+            <Form.Item
+               name='targetDistance'
+               label='目标距离'
+               rules={[{ required: false, message: "请输入目标距离" }]}
+               extra='雷达与目标物之间的距离（米），用于姿态计算'
+            >
+               <InputNumber
+                  min={0}
+                  max={5}
+                  step={0.01}
+                  addonAfter='米'
+                  style={{ width: "100%" }}
+                  placeholder='请输入目标距离'
+               />
             </Form.Item>
 
             <Form.Item name='remark' label='备注'>

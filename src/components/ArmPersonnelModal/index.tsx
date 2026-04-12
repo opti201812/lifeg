@@ -253,7 +253,7 @@ const ArmPersonnelModal: React.FC<ArmPersonnelModalProps> = ({
          if (initialValues.roomId) {
             try {
                const res = await axios.get(`${config.backend.url}/rooms/${initialValues.roomId}`);
-               setIsTemplate2(res.data?.templateId === 2);
+               setIsTemplate2(res.data?.data?.templateId === 2);
             } catch (error) {
                console.error("获取房间信息失败:", error);
                setIsTemplate2(false);
@@ -277,14 +277,14 @@ const ArmPersonnelModal: React.FC<ArmPersonnelModalProps> = ({
          ]);
 
          // 处理房间数据
-         const roomsData = roomsRes.data || [];
+         const roomsData = roomsRes.data?.data || roomsRes.data || [];
          setRooms(roomsData);
 
          // 处理关联数据
-         const associationsData = Array.isArray(associationsRes.data)
-            ? associationsRes.data
-            : Array.isArray(associationsRes.data?.data)
+         const associationsData = Array.isArray(associationsRes.data?.data)
             ? associationsRes.data.data
+            : Array.isArray(associationsRes.data)
+            ? associationsRes.data
             : [];
          setAssociations(associationsData);
 
@@ -294,7 +294,8 @@ const ArmPersonnelModal: React.FC<ArmPersonnelModalProps> = ({
          );
 
          // 过滤出未离开且未被关联的人员（如果是编辑模式，保留当前关联的人员）
-         const availablePersonnel = personnelRes.data.filter((p: any) => {
+         const personnelData = personnelRes.data?.data || personnelRes.data || [];
+         const availablePersonnel = personnelData.filter((p: any) => {
             if (p.is_out) return false; // 排除已离开的人员
 
             // 如果是编辑模式且是当前关联的人员，则保留
@@ -381,8 +382,8 @@ const ArmPersonnelModal: React.FC<ArmPersonnelModalProps> = ({
             const formVals = getInitialFormValues({
                associationId: initialValues.associationId,
                associations: associationsData,
-               personnelList: personnelRes.data,
-               rooms: roomsRes.data,
+               personnelList: personnelData,
+               rooms: roomsData,
                bracelets: [...(braceletsRes.data.onlineBracelets || []), ...(braceletsRes.data.offlineBracelets || [])],
             });
             form.setFieldsValue(formVals);
@@ -515,7 +516,7 @@ const ArmPersonnelModal: React.FC<ArmPersonnelModalProps> = ({
                if (!personnelRes.data.success) {
                   throw new Error(personnelRes.data.error || "新增人员失败");
                }
-               const personnelId = personnelRes.data.id;
+               const personnelId = personnelRes.data.data?.id || personnelRes.data.id;
 
                // 2. 新增关联
                const response = await axios.post(`${config.backend.url}/associations`, {

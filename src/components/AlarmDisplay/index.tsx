@@ -1,14 +1,12 @@
 // components/AlarmDisplay/index.tsx
 
 import React, { useState, useEffect } from "react";
-import { Table, Button, Input, DatePicker, Select, Space, message, Form, Row, Col, Tooltip } from "antd";
+import { Table, Button, Input, DatePicker, Select, Space, message, Form, Row, Col, Tooltip, Tabs } from "antd";
 import { SearchOutlined, ReloadOutlined, DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import axios, { AxiosError } from "axios";
 import config from "../../config";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx"; // Import XLSX for Excel export
+import * as ExcelJS from "exceljs";
 
 const { RangePicker } = DatePicker;
 
@@ -26,6 +24,7 @@ interface AlarmData {
 
 const AlarmDisplay: React.FC = () => {
    const [alarmData, setAlarmData] = useState<AlarmData[]>([]);
+   const [dataCategory, setDataCategory] = useState<string>("basic"); // 基础体征/心率分析/睡眠分析/综合评测
    const [personnelOptions, setPersonnelOptions] = useState<
       {
          value: number;
@@ -61,14 +60,15 @@ const AlarmDisplay: React.FC = () => {
       const fetchPersonnelOptions = async () => {
          try {
             const response = await axios.get(`${config.backend.url}/personnel`);
-            const options = response.data.map((person: any) => ({
+            const personnelData = response.data?.data || response.data || [];
+            const options = personnelData.map((person: any) => ({
                value: person.id,
                key: person.id,
                label: person.id,
             }));
             setPersonnelOptions(options);
 
-            const names = response.data.map((person: any) => ({
+            const names = personnelData.map((person: any) => ({
                value: person.id,
                key: person.id,
                label: person.name,
@@ -76,7 +76,7 @@ const AlarmDisplay: React.FC = () => {
             setNameOptions(names);
 
             // 获取 idNumberOptions，过滤掉空值
-            const idNumbers = response.data
+            const idNumbers = personnelData
                .filter((person: any) => person.id_number && person.id_number.trim() !== "")
                .map((person: any) => ({
                   value: person.id,
@@ -113,6 +113,7 @@ const AlarmDisplay: React.FC = () => {
       setLoading(true);
       try {
          const queryParams = new URLSearchParams();
+         queryParams.append("category", dataCategory);
          const selectedPersonnel = { name: "", id_number: "" };
 
          if (filters.personnelId) {
@@ -150,10 +151,22 @@ const AlarmDisplay: React.FC = () => {
          const response = await axios.get(`${config.backend.url}/history/alarms?${queryParams.toString()}`);
          // 从 personnelOptions、nameOptions、idNumberOptions 中查找当前人员的姓名、身份证号码，然后与response.data进行合并
 
-         // 方案1：前端排序（如果后端未支持排序）
+         // 处理API响应数据，映射字段名称并保持兼容性
          const alarmDataWithPersonInfo = response.data
             .map((alarm: any) => ({
                ...alarm,
+               // 字段映射：新API返回的字段映射到旧字段名
+               personnel_id: alarm.personnel_id || alarm.personnelId,
+               heart_rate: alarm.radar_heart_rate || alarm.heart_rate || alarm.radarHeartRate,
+               breath_rate: alarm.breath_rate || alarm.breathRate,
+               distance: alarm.distance,
+               pose: alarm.pose,
+               apnea: alarm.apnea || alarm.vitalSign || "0",
+               environment: alarm.environment_interference || alarm.environment || alarm.environmentInterference || "0",
+               alarm_level: alarm.alarm_status || alarm.alarm_level || alarm.alarmStatus,
+               button_status: alarm.bracelet_button_status || alarm.button_status || alarm.buttonStatus || "0",
+               create_date: alarm.time || alarm.create_date,
+               handling_time: alarm.handling_time || alarm.handlingTime,
                name: selectedPersonnel.name,
                id_number: selectedPersonnel.id_number,
             }))
@@ -183,44 +196,80 @@ const AlarmDisplay: React.FC = () => {
       form.resetFields();
    };
 
-   const handleExport = () => {
-      /*
-      {
-    "id": "1748077768293-pcgbv5350",
-    "room_id": "",
-    "personnel_id": "15",
-    "heart_rate": "152",
-    "breath_rate": "",
-    "distance": "240",
-    "pose": "",
-    "environment": "20",
-    "alarm_level": "",
-    "handler_id": "",
-    "handling_method": "",
-    "handling_time": "",
-    "create_date": "2025-05-24T09:09:14.804Z",
-    "update_date": "",
-    "personnelId": null
-}
-      */
-      const newData = alarmData.map((item: any) => ({
-         人员编号: item.personnel_id,
-         姓名: item.name,
-         身份证号: item.id_number,
-         心率: item.heart_rate,
-         呼吸: item.breath_rate,
-         雷达距离: (parseInt(item.distance) / 100).toFixed(2),
-         报警: item.alarm_level ? "是" : "否",
-         体位: item.pose,
-         环境: item.environment,
-         告警级别: item.alarm_level,
-         报警时间: dayjs(item.create_date).format("YYYY-MM-DD HH:mm:ss"),
-      }));
+   const handleExport = async () => {
+      try {
+         // 创建新的工作簿
+         const workbook = new ExcelJS.Workbook();
+         const worksheet = workbook.addWorksheet("Alarm Data");
 
-      const ws = XLSX.utils.json_to_sheet(newData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Alarm Data");
-      XLSX.writeFile(wb, "alarm_data.xlsx");
+         // 准备导出数据
+         const newData = alarmData.map((item: any) => ({
+            人员编号: item.personnel_id,
+            姓名: item.name,
+            身份证号: item.id_number,
+            心率: item.heart_rate,
+            呼吸: item.breath_rate,
+            雷达距离: (parseInt(item.distance) / 100).toFixed(2),
+            报警: item.alarm_level ? "是" : "否",
+            体位: item.pose,
+            环境: item.environment,
+            告警级别: item.alarm_level,
+            报警时间: dayjs(item.create_date).format("YYYY-MM-DD HH:mm:ss"),
+         }));
+
+         // 添加表头
+         const headers = Object.keys(newData[0]);
+         worksheet.addRow(headers);
+
+         // 设置表头样式
+         const headerRow = worksheet.getRow(1);
+         headerRow.font = { bold: true };
+         headerRow.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFE6E6FA" },
+         };
+
+         // 添加数据行
+         newData.forEach((row: any) => {
+            const values = headers.map((header) => row[header]);
+            worksheet.addRow(values);
+         });
+
+         // 自动调整列宽
+         worksheet.columns.forEach((column) => {
+            if (column && column.eachCell) {
+               let maxLength = 0;
+               column.eachCell({ includeEmpty: true }, (cell) => {
+                  const columnLength = cell.value ? cell.value.toString().length : 10;
+                  if (columnLength > maxLength) {
+                     maxLength = columnLength;
+                  }
+               });
+               column.width = Math.min(maxLength + 2, 20);
+            }
+         });
+
+         // 生成文件名并下载
+         const fileName = `alarm_data_${dayjs().format("YYYYMMDD_HHmmss")}.xlsx`;
+         const buffer = await workbook.xlsx.writeBuffer();
+
+         // 创建下载链接
+         const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+         const url = window.URL.createObjectURL(blob);
+         const link = document.createElement("a");
+         link.href = url;
+         link.download = fileName;
+         document.body.appendChild(link);
+         link.click();
+         document.body.removeChild(link);
+         window.URL.revokeObjectURL(url);
+
+         message.success("导出成功");
+      } catch (error) {
+         console.error("导出失败:", error);
+         message.error("导出失败，请重试");
+      }
    };
 
    const handlePrint = () => {
@@ -463,106 +512,140 @@ const AlarmDisplay: React.FC = () => {
 
    const [columns, setColumns] = useState(initialColumns);
 
+   const categoryItems = [
+      { key: "basic", label: "基础体征" },
+      { key: "analysis", label: "心率分析" },
+      { key: "sleep", label: "睡眠分析" },
+      { key: "comprehensive", label: "综合评测" },
+   ];
+
    return (
-      <div>
+      <div style={{ padding: "24px" }}>
          <h2>告警信息</h2>
-         <Form
-            layout='vertical'
-            onFinish={handleSearch}
-            form={form}
-            onValuesChange={(changedValues, allValues) => {
-               if (changedValues.personnelId !== undefined) {
-                  allValues.name = null;
-                  allValues.idNumber = "";
-               }
-               if (changedValues.name !== undefined) {
-                  allValues.personnelId = null;
-                  allValues.idNumber = "";
-               }
-               if (changedValues.idNumber !== undefined) {
-                  allValues.personnelId = null;
-                  allValues.name = null;
-               }
-               setFilters(allValues);
+         {/* 数据类别Tab，与历史数据一致 */}
+         <div
+            style={{
+               background: "#fff",
+               borderRadius: "8px",
+               boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+               marginBottom: "16px",
+               padding: "0 0px",
             }}
          >
-            <Row gutter={16}>
-               <Col span={4}>
-                  <Form.Item label='人员编号' name='personnelId'>
-                     <Select
-                        showSearch
-                        placeholder='请选择人员编号'
-                        optionFilterProp='children'
-                        filterOption={(input, option) =>
-                           (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                        }
-                        options={personnelOptions}
-                        allowClear
-                        disabled={!!filters.name || !!filters.idNumber}
-                     />
-                  </Form.Item>
-               </Col>
-               <Col span={5}>
-                  <Form.Item label='姓名' name='name'>
-                     <Select
-                        showSearch
-                        placeholder='请选择姓名'
-                        optionFilterProp='children'
-                        filterOption={(input, option) =>
-                           (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                        }
-                        options={nameOptions}
-                        allowClear
-                        disabled={!!filters.personnelId || !!filters.idNumber}
-                     />
-                  </Form.Item>
-               </Col>
-               <Col span={5}>
-                  <Form.Item label='身份证号' name='idNumber'>
-                     <Select
-                        showSearch
-                        placeholder='请选择身份证号'
-                        optionFilterProp='children'
-                        filterOption={(input, option) =>
-                           (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                        }
-                        options={idNumberOptions}
-                        allowClear
-                        disabled={!!filters.personnelId || !!filters.name}
-                     />
-                  </Form.Item>
-               </Col>
-               <Col span={5}>
-                  <Form.Item label='处理时间' name='handlingTimeRange'>
-                     <RangePicker />
-                  </Form.Item>
-               </Col>
-               <Col span={5}>
-                  <Form.Item label='告警时间' name='dateRange'>
-                     <RangePicker />
-                  </Form.Item>
-               </Col>
-            </Row>
-            <Form.Item style={{ textAlign: "right" }}>
-               {/* 将按钮居右 */}
-               <Space>
-                  <Button type='primary' htmlType='submit' icon={<SearchOutlined />} loading={loading}>
-                     查询
-                  </Button>
-                  <Button onClick={handleReset} icon={<ReloadOutlined />}>
-                     重置
-                  </Button>
-                  <Button onClick={handleExport} icon={<DownloadOutlined />}>
-                     导出
-                  </Button>
-                  <Button onClick={handlePrint} icon={<PrinterOutlined />}>
-                     打印
-                  </Button>{" "}
-               </Space>
-            </Form.Item>
-         </Form>
+            <Tabs
+               activeKey={dataCategory}
+               onChange={setDataCategory}
+               items={categoryItems}
+               style={{ margin: 0, padding: "0 16px" }}
+               tabBarStyle={{ marginBottom: 0, borderBottom: "1px solid #f0f0f0" }}
+            />
+         </div>
+         <div
+            style={{
+               background: "#fff",
+               borderRadius: "8px",
+               boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+               padding: "24px",
+            }}
+         >
+            <Form
+               layout='vertical'
+               onFinish={handleSearch}
+               form={form}
+               onValuesChange={(changedValues, allValues) => {
+                  if (changedValues.personnelId !== undefined) {
+                     allValues.name = null;
+                     allValues.idNumber = "";
+                  }
+                  if (changedValues.name !== undefined) {
+                     allValues.personnelId = null;
+                     allValues.idNumber = "";
+                  }
+                  if (changedValues.idNumber !== undefined) {
+                     allValues.personnelId = null;
+                     allValues.name = null;
+                  }
+                  setFilters(allValues);
+               }}
+            >
+               <Row gutter={16}>
+                  <Col span={4}>
+                     <Form.Item label='人员编号' name='personnelId'>
+                        <Select
+                           showSearch
+                           placeholder='请选择人员编号'
+                           optionFilterProp='children'
+                           filterOption={(input, option) =>
+                              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                           }
+                           options={personnelOptions}
+                           allowClear
+                           disabled={!!filters.name || !!filters.idNumber}
+                        />
+                     </Form.Item>
+                  </Col>
+                  <Col span={5}>
+                     <Form.Item label='姓名' name='name'>
+                        <Select
+                           showSearch
+                           placeholder='请选择姓名'
+                           optionFilterProp='children'
+                           filterOption={(input, option) =>
+                              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                           }
+                           options={nameOptions}
+                           allowClear
+                           disabled={!!filters.personnelId || !!filters.idNumber}
+                        />
+                     </Form.Item>
+                  </Col>
+                  <Col span={5}>
+                     <Form.Item label='身份证号' name='idNumber'>
+                        <Select
+                           showSearch
+                           placeholder='请选择身份证号'
+                           optionFilterProp='children'
+                           filterOption={(input, option) =>
+                              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                           }
+                           options={idNumberOptions}
+                           allowClear
+                           disabled={!!filters.personnelId || !!filters.name}
+                        />
+                     </Form.Item>
+                  </Col>
+                  <Col span={5}>
+                     <Form.Item label='处理时间' name='handlingTimeRange'>
+                        <RangePicker />
+                     </Form.Item>
+                  </Col>
+                  <Col span={5}>
+                     <Form.Item label='告警时间' name='dateRange'>
+                        <RangePicker />
+                     </Form.Item>
+                  </Col>
+               </Row>
+               <Form.Item style={{ textAlign: "right" }}>
+                  {/* 将按钮居右 */}
+                  <Space>
+                     <Button type='primary' htmlType='submit' icon={<SearchOutlined />} loading={loading}>
+                        查询
+                     </Button>
+                     <Button onClick={handleReset} icon={<ReloadOutlined />}>
+                        重置
+                     </Button>
+                     <Button onClick={handleExport} icon={<DownloadOutlined />}>
+                        导出
+                     </Button>
+                     <Button onClick={handlePrint} icon={<PrinterOutlined />}>
+                        打印
+                     </Button>{" "}
+                  </Space>
+               </Form.Item>
+            </Form>
 
-         <Table dataSource={alarmData} columns={columns} key={"id"} rowKey={"id"} />
+            <Table dataSource={alarmData} columns={columns} key={"id"} rowKey={"id"} />
+         </div>
       </div>
    );
 };

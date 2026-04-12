@@ -29,11 +29,7 @@ const useMenuItems = (
                   label: "人员总览",
                   icon: <UserOutlined />,
                },
-               {
-                  key: "new-overview",
-                  label: "旧版总览",
-                  icon: <UserOutlined />,
-               },
+               // 旧版总览已移除
                ...Object.values(roomsByType)
                   .flat()
                   .map((room) => ({

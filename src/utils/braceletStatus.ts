@@ -4,7 +4,7 @@ export const getBraceletStatusText = (
       environmentInterference?: number;
       breathRate?: number;
    },
-   tamperStatus: number | null
+   tamperStatus: number | null,
 ): string => {
    // 判断是否满足报警条件
    const isAlertCondition =

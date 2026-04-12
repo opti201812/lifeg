@@ -60,7 +60,7 @@ const RoomPage: React.FC<{
       const fetchPersonnel = async () => {
          try {
             const response = await axios.get(`${config.backend.url}/personnel`);
-            setPersonnelList(response.data);
+            setPersonnelList(response.data?.data || response.data || []);
          } catch (error) {
             console.error("Error fetching personnel:", error);
             message.error("获取人员信息失败");
@@ -76,7 +76,7 @@ const RoomPage: React.FC<{
       const fetchData = async () => {
          try {
             const roomResponse = await axios.get(`${config.backend.url}/rooms/${roomId}`);
-            const roomData = roomResponse.data;
+            const roomData = roomResponse.data?.data || roomResponse.data;
 
             // Fetch personnel details if personnel_id is present
             let personnelData = null;
@@ -85,7 +85,7 @@ const RoomPage: React.FC<{
                   withCredentials: true,
                });
 
-               personnelData = personnelResponse.data;
+               personnelData = personnelResponse.data?.data || personnelResponse.data;
             }
 
             setRoomInfo({

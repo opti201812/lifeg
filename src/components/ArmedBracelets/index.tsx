@@ -32,18 +32,18 @@ const ArmedBracelets: React.FC = () => {
             const associations = Array.isArray(associationsResponse.data?.data)
                ? associationsResponse.data.data
                : Array.isArray(associationsResponse.data)
-               ? associationsResponse.data
-               : [];
+                 ? associationsResponse.data
+                 : [];
 
             // 创建人员映射
             const personnelMap: { [key: number]: any } = {};
-            personnelResponse.data.forEach((person: any) => {
+            personnelResponse.data?.data.forEach((person: any) => {
                personnelMap[person.id] = person;
             });
 
             // 创建房间映射
             const roomsMap: { [key: number]: any } = {};
-            roomsResponse.data.forEach((room: any) => {
+            roomsResponse.data?.data.forEach((room: any) => {
                roomsMap[room.id] = room;
             });
 
@@ -122,8 +122,8 @@ const ArmedBracelets: React.FC = () => {
                         const associations = Array.isArray(associationsResponse.data?.data)
                            ? associationsResponse.data.data
                            : Array.isArray(associationsResponse.data)
-                           ? associationsResponse.data
-                           : [];
+                             ? associationsResponse.data
+                             : [];
 
                         const personnelMap: { [key: number]: any } = {};
                         personnelResponse.data.forEach((person: any) => {
@@ -212,7 +212,6 @@ const ArmedBracelets: React.FC = () => {
             }}
             onCancel={() => setModalVisible(false)}
             onSubmit={(values) => {
-               console.log("变更操作:", values);
                setModalVisible(false);
             }}
          />

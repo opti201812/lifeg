@@ -1,6 +1,6 @@
 import React from "react";
 import { Alert, Space, Button, message } from "antd";
-import { Room } from "../../../NewOverview/types";
+import { Room } from "../../types";
 import { createSelector } from "@reduxjs/toolkit";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../../store";

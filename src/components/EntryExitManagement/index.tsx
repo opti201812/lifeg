@@ -20,10 +20,10 @@ const EntryExitManagement: React.FC = () => {
       const fetchData = async () => {
          try {
             const roomsResponse = await axios.get(`${config.backend.url}/rooms`);
-            setRooms(roomsResponse.data || []);
+            setRooms(roomsResponse.data?.data || roomsResponse.data || []);
 
             const personnelResponse = await axios.get(`${config.backend.url}/personnel`);
-            setPersonnel(personnelResponse.data || []);
+            setPersonnel(personnelResponse.data?.data || personnelResponse.data || []);
          } catch (error) {
             console.error("Error fetching data:", error);
             message.error("获取房间信息失败！");
@@ -46,7 +46,8 @@ const EntryExitManagement: React.FC = () => {
                const occupiedPersonnelIds = rooms.flatMap((room) => room.personnel_id);
 
                // 过滤掉已入住的人员
-               const available = res.data.filter(
+               const personnelData = res.data?.data || res.data || [];
+               const available = personnelData.filter(
                   (p: Personnel) => !occupiedPersonnelIds.includes(p.id) && p.is_out !== "true"
                );
                // Sort by update_date in descending order (latest first)
@@ -71,7 +72,7 @@ const EntryExitManagement: React.FC = () => {
          await axios.post(`${config.backend.url}/rooms/${roomId}/checkout`);
          // Refetch rooms after check-out
          const response = await axios.get(`${config.backend.url}/rooms`);
-         setRooms(response.data || []);
+         setRooms(response.data?.data || response.data || []);
          message.success("出场成功");
       } catch (error) {
          console.error("Error checking out:", error);
@@ -137,7 +138,7 @@ const EntryExitManagement: React.FC = () => {
 
          // 刷新房间列表
          const response = await axios.get(`${config.backend.url}/rooms`);
-         setRooms(response.data || []);
+         setRooms(response.data?.data || response.data || []);
          setIsModalVisible(false);
          message.success("操作成功"); // 调整提示信息
       } catch (error) {

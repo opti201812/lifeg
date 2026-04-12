@@ -12,6 +12,7 @@ const RoomTypeManagement: React.FC = () => {
    const [isModalVisible, setIsModalVisible] = useState(false);
    const [editingRoomType, setEditingRoomType] = useState<RoomType | null>(null);
    const [isEditing, setIsEditing] = useState(false);
+   const confirmModalRef = React.useRef<ReturnType<typeof Modal.confirm> | null>(null);
 
    const fetchData = useCallback(async () => {
       setLoading(true);
@@ -35,7 +36,7 @@ const RoomTypeManagement: React.FC = () => {
    const handleDeleteRoomType = async (id: number) => {
       try {
          await new Promise((resolve, reject) => {
-            Modal.confirm({
+            confirmModalRef.current = Modal.confirm({
                title: "确认删除",
                content: "确定要删除此房间类型吗？",
                okText: "确认",
@@ -45,6 +46,7 @@ const RoomTypeManagement: React.FC = () => {
             });
          });
          await axios.delete(`${config.backend.url}/rooms/types/${id}`);
+         confirmModalRef.current?.destroy();
          message.success("删除房间类型成功！");
          fetchData();
       } catch (error) {

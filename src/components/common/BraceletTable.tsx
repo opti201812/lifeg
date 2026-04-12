@@ -1,6 +1,5 @@
 import React from "react";
 import { Table, Tag, Button, Tooltip } from "antd";
-import { getBatteryStatus } from "../../utils";
 import { useNavigate } from "react-router-dom";
 
 interface BraceletTableProps {
@@ -36,18 +35,10 @@ const BraceletTable: React.FC<BraceletTableProps> = ({ data, loading, actionType
          title: "所在房间",
          key: "roomName",
          render: (roomInfo: any, record: any) => (
-            <Button type='link' onClick={() => navigate(`/dashboard/new-overview/${record.roomId}`)}>
+            <Button type='link' onClick={() => navigate(`/dashboard/overview/${record.roomId}`)}>
                {roomInfo.roomName}
             </Button>
          ),
-      },
-      {
-         title: "电池状态",
-         key: "battery",
-         render: (battery: number) => {
-            const { isNormal, status } = getBatteryStatus(battery);
-            return <Tag color={isNormal ? "green" : "red"}>{status || "-"}</Tag>;
-         },
       },
       {
          title: "更新时间",

@@ -1,6 +1,5 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import NewOverview from "../components/NewOverview";
 import Overview from "../components/Overview";
 import HistoryData from "../components/HistoryData";
 import AlarmDisplay from "../components/AlarmDisplay";
@@ -24,7 +23,7 @@ import ArmedBracelets from "../components/ArmedBracelets";
 const DashboardRoutes: React.FC = () => {
    return (
       <Routes>
-         <Route path='new-overview/:roomId?' element={<NewOverview />} />
+         {/* legacy NewOverview route removed */}
          <Route path='overview/:roomId?' element={<Overview />} />
          <Route path='history' element={<HistoryData />} />
          <Route path='alarm-display' element={<AlarmDisplay />} />

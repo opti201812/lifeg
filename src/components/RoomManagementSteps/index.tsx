@@ -33,7 +33,7 @@ const RoomManagement: React.FC = () => {
       const fetchRooms = async () => {
          try {
             const response = await axios.get(`${config.backend.url}/rooms`);
-            const roomsData = response.data.map((room: Room) => ({
+            const roomsData = (response.data?.data || response.data || []).map((room: Room) => ({
                ...room,
                mattress_distance: room.mattress_distance !== undefined && room.mattress_distance / 100,
             }));

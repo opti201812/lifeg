@@ -16,12 +16,12 @@ const SidebarMenu: React.FC = () => {
          try {
             // 获取房间类型
             const roomTypesResponse = await axios.get(`${config.backend.url}/rooms/types`);
-            const roomTypesData = roomTypesResponse.data || [];
+            const roomTypesData = roomTypesResponse.data?.data || roomTypesResponse.data || [];
             setRoomTypes(roomTypesData);
 
             // 获取所有房间
             const roomsResponse = await axios.get(`${config.backend.url}/rooms`);
-            const roomsData = roomsResponse.data || [];
+            const roomsData = roomsResponse.data?.data || roomsResponse.data || [];
 
             // 按类型分组房间
             const roomsGroupedByType: { [key: string]: { id: number; name: string }[] } = {};

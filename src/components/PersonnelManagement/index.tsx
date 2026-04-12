@@ -16,7 +16,7 @@ const PersonnelManagement: React.FC = () => {
          try {
             const response = await axios.get(`${config.backend.url}/personnel`);
 
-            setPersonnelData(response.data);
+            setPersonnelData(response.data?.data || response.data || []);
          } catch (error) {
             console.error("Error fetching personnel:", error);
             message.error("获取人员信息失败");

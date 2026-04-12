@@ -14,6 +14,7 @@ const RoomManagement: React.FC = () => {
    const [isModalVisible, setIsModalVisible] = useState(false);
    const [editingRoom, setEditingRoom] = useState<Room | null>(null);
    const [isEditing, setIsEditing] = useState(false);
+   const confirmModalRef = React.useRef<ReturnType<typeof Modal.confirm> | null>(null);
 
    const fetchData = useCallback(async () => {
       setLoading(true);
@@ -25,18 +26,20 @@ const RoomManagement: React.FC = () => {
          // 获取可用雷达列表
          const radarsResponse = await axios.get(`${config.backend.url}/rooms/radars`);
 
-         setRooms(roomsResponse.data);
+         const roomsData = roomsResponse.data?.data || roomsResponse.data || [];
+         setRooms(roomsData);
          setRoomTypes(initDataResponse.data.data.roomTypes);
          setRoomTemplates(initDataResponse.data.data.templates);
 
          // 收集所有已分配给房间的雷达ID
          // 由于后端改为了存储纯数字数组，需要直接使用radars数组
-         const usedRadarIds = roomsResponse.data.flatMap((room: Room) =>
+         const usedRadarIds = roomsData.flatMap((room: Room) =>
             Array.isArray(room.radars) ? room.radars : []
          );
 
          // 过滤出未分配的雷达
-         const availableRadarsList = radarsResponse.data.filter((radar: any) => !usedRadarIds.includes(radar.id));
+         const radarsData = radarsResponse.data?.data || radarsResponse.data || [];
+         const availableRadarsList = radarsData.filter((radar: any) => !usedRadarIds.includes(radar.id));
 
          setAvailableRadars(availableRadarsList);
       } catch (error) {
@@ -54,7 +57,7 @@ const RoomManagement: React.FC = () => {
    const handleDeleteRoom = async (id: number) => {
       try {
          await new Promise((resolve, reject) => {
-            Modal.confirm({
+            confirmModalRef.current = Modal.confirm({
                title: "确认删除",
                content: "确定要删除此房间吗？",
                okText: "确认",
@@ -64,6 +67,7 @@ const RoomManagement: React.FC = () => {
             });
          });
          await axios.delete(`${config.backend.url}/rooms/${id}`);
+         confirmModalRef.current?.destroy();
          message.success("删除房间成功！");
          fetchData();
       } catch (error) {
