@@ -82,7 +82,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
          onCancel={onCancel}
          footer={null}
          width={900}
-         destroyOnClose
+         destroyOnHidden
       >
          <RegistrationFormEnhanced
             form={form}

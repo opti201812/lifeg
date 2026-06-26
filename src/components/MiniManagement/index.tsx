@@ -1,6 +1,6 @@
 // components/MiniManagement/index.tsx
 import React, { useState, useEffect } from "react";
-import { Form, Input, Button, Switch, Upload, Row, Col, message, UploadFile, Tooltip, Select } from "antd";
+import { Form, Input, Button, Switch, Upload, Row, Col, message, UploadFile, Tooltip, Select, InputNumber } from "antd";
 import { UploadOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import axios, { AxiosError } from "axios"; // You'll need to install axios: `npm install axios`
 import config from "../../config";
@@ -11,7 +11,7 @@ interface Config {
 }
 
 interface MiniConfig {
-   isEnabled: boolean;
+   wechatEnabled: boolean;
    provider: string;
    accountSid: string;
    authToken: string;
@@ -23,13 +23,13 @@ interface MiniConfig {
 }
 
 const defaultMiniConfig: MiniConfig = {
-   isEnabled: true,
+   wechatEnabled: true,
    provider: "",
    accountSid: "",
    authToken: "",
    fromNumber: "",
    defaultMessage: "",
-   verificationCodeValidity: 120,
+   verificationCodeValidity: 15,
    port: "USB1",
    baudRate: 9600,
 };
@@ -38,7 +38,7 @@ const MiniManagement: React.FC = () => {
    const [form] = Form.useForm();
    const [initialValues, setInitialValues] = useState<MiniConfig>(defaultMiniConfig);
    const [fileList, setFileList] = useState<UploadFile[]>([]);
-   const [showAdditionalFields, setShowAdditionalFields] = useState(initialValues.isEnabled); // State to control visibility
+   const [showAdditionalFields, setShowAdditionalFields] = useState(initialValues.wechatEnabled); // State to control visibility
 
    const handleUploadChange = (info: any) => {
       // ... (rest of the handleUploadChange function)
@@ -60,7 +60,7 @@ const MiniManagement: React.FC = () => {
                <Col span={12}>
                   <Form.Item
                      label='是否启用'
-                     name='isEnabled'
+                     name='wechatEnabled'
                      valuePropName='checked'
                      rules={[{ required: true, message: "请选择是否启用短信通知" }]}
                   >
@@ -76,7 +76,7 @@ const MiniManagement: React.FC = () => {
                         name='verificationCodeValidity'
                         rules={[{ required: true, message: "请输入验证码有效期" }]}
                      >
-                        <Input type='number' addonAfter='秒' />
+                        <InputNumber min={1} max={15} addonAfter='秒' style={{ width: "100%" }} />
                      </Form.Item>
                   </Col>
                )}

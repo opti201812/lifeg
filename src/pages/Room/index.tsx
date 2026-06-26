@@ -277,7 +277,7 @@ const RoomPage: React.FC<{
                         try {
                            await axios.delete(`${config.backend.url}/associations/${associationId}`);
                            message.success("解除关联成功");
-                           navigate("/overview"); // 返回人员总览
+                           navigate("/dashboard/overview"); // 返回人员总览
                         } catch (error) {
                            console.error("解除关联失败:", error);
                            message.error("解除关联失败");

@@ -66,7 +66,7 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({
          <Row gutter={16}>
             <Col span={12}>
                <Form.Item label='既往病史' name='medicalHistory'>
-                  <Select mode='multiple' placeholder='请选择既往病史'>
+                  <Select placeholder='请选择既往病史'>
                      {MEDICAL_HISTORIES.map((item) => (
                         <Option key={item.value} value={item.value}>
                            {item.label}

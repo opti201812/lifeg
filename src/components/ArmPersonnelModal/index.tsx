@@ -649,9 +649,7 @@ const ArmPersonnelModal: React.FC<ArmPersonnelModalProps> = ({
                               breathRate: selected.breath_rate || undefined,
                               restingHeartRate: selected.heart_rate_resting || undefined,
                               restingBreathRate: selected.breath_rate_resting || undefined,
-                              medicalHistory: Array.isArray(selected.medical_history)
-                                 ? selected.medical_history
-                                 : [selected.medical_history].filter(Boolean),
+                              medicalHistory: selected.medical_history || undefined,
                               remarks: selected.remark || "",
                            });
                         }
@@ -700,7 +698,7 @@ const ArmPersonnelModal: React.FC<ArmPersonnelModalProps> = ({
    }
 
    return (
-      <Modal title={title || "人员设防"} open={visible} onCancel={onCancel} footer={null} destroyOnClose>
+      <Modal title={title || "人员设防"} open={visible} onCancel={onCancel} footer={null} destroyOnHidden>
          <Tabs
             activeKey={mode}
             onChange={(key) => {
@@ -933,11 +931,11 @@ const ArmPersonnelModal: React.FC<ArmPersonnelModalProps> = ({
                      rules={[
                         {
                            required: controlState.required.medicalHistory,
-                           message: "请选择至少一项既往病史",
+                           message: "请选择既往病史",
                         },
                      ]}
                   >
-                     <Select mode='multiple' showSearch={false} optionFilterProp='label' placeholder='请选择既往病史'>
+                     <Select showSearch={false} optionFilterProp='label' placeholder='请选择既往病史'>
                         {MEDICAL_HISTORIES.map((item) => (
                            <Option key={item.value} value={item.value}>
                               {item.label}

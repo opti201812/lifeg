@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Form, Input, Button, Switch, Row, Col, message, Select, UploadFile } from "antd";
+import { Form, InputNumber, Button, Switch, Row, Col, message, Select, UploadFile } from "antd";
 import axios from "axios";
 import config from "../../config";
 import { AlertConfig, defaultSmsConfig, SmsConfig } from "../../types";
@@ -97,7 +97,7 @@ const SmsForm: React.FC<SmsFormProps> = ({}) => {
                      name='smsVerificationCodeExpiry'
                      rules={[{ required: true, message: "请输入验证码有效期" }]}
                   >
-                     <Input type='number' addonAfter='秒' />
+                     <InputNumber min={1} max={15} addonAfter='秒' style={{ width: "100%" }} />
                   </Form.Item>
                </Col>
             )}

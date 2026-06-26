@@ -1,7 +1,7 @@
 // components/AlarmSettings/AlarmForm.tsx
 
 import React, { useState, useEffect } from "react";
-import { Form, Input, Button, Switch, Upload, Row, Col, message, UploadFile, Tooltip, Select } from "antd";
+import { Form, InputNumber, Button, Switch, Upload, Row, Col, message, UploadFile, Tooltip, Select } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import axios from "axios"; // You'll need to install axios: `npm install axios`
 import config from "../../config";
@@ -281,10 +281,9 @@ const AlarmForm: React.FC = () => {
                         ...(field.required ? [{ required: true, message: field.message }] : []),
                         ...(field.validator ? [{ validator: field.validator }] : []),
                      ].filter(Boolean)}
-                     valuePropName={field.type === "file" ? "fileList" : "value"}
                   >
                      {field.type === "number" && (
-                        <Input type='number' addonAfter={field.unit} min={field.min} max={field.max} />
+                        <InputNumber suffix={field.unit} min={field.min} max={field.max} style={{ width: "100%" }} />
                      )}
                      {field.type === "select" && (
                         <Select placeholder={`请选择${field.label}`} options={field.options} />

@@ -18,7 +18,7 @@ export interface RegistrationRecord {
    diastolicPressure?: number;
    restingHeartRate?: number;
    restingBreathRate?: number;
-   medicalHistory?: string[];
+   medicalHistory?: string;
    remarks?: string;
    registrationTime: string;
    status: "pending" | "completed";
@@ -43,7 +43,7 @@ export interface RegistrationFormValues {
    age: number | string;
    braceletId?: string | null;
    oximeterId?: string;
-   medicalHistory?: string[];
+   medicalHistory?: string;
    remarks?: string;
    heartRate: number | string;
    breathRate: number | string;
@@ -71,7 +71,7 @@ export interface PersonnelData {
    id_number: string;
    gender: string;
    age: number;
-   medical_history?: string[];
+   medical_history?: string;
    remark?: string;
    heart_rate?: number;
    breath_rate?: number;

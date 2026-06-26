@@ -17,7 +17,7 @@ export interface SmsConfig {
 
 export const defaultSmsConfig: SmsConfig = {
    smsEnabled: true,
-   smsVerificationCodeExpiry: 120,
+   smsVerificationCodeExpiry: 15,
    smsPort: "USB1",
    smsBaudRate: 9600,
    smsParity: "None",

@@ -12,8 +12,6 @@ import {
    Col,
    Tooltip,
    Tabs,
-   Card,
-   Statistic,
 } from "antd";
 import { SearchOutlined, ReloadOutlined, DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -883,6 +881,24 @@ const HistoryData: React.FC = () => {
       return [...baseColumns, ...dataColumns];
    };
 
+   // 统计卡片指标中文名称映射（按数据类别，无中文名时回退到原 key）
+   const statisticLabelMap: Record<string, Record<string, string>> = {
+      basic: { heartRate: "心率", breathRate: "呼吸率", systolicPressure: "收缩压", diastolicPressure: "舒张压" },
+      analysis: { sdnn: "SDNN", rmssd: "RMSSD", pnn50: "pNN50" },
+      sleep: {
+         totalSleep: "睡眠总时长(分)",
+         deepSleep: "深睡时长(分)",
+         lightSleep: "浅睡时长(分)",
+         sleepQuality: "睡眠质量分数",
+      },
+      comprehensive: {
+         stress: "压力值",
+         fatigue: "疲劳耐受",
+         sleepQuality: "睡眠质量",
+         heartAttack: "心梗风险",
+      },
+   };
+
    // 统计数据
    const statistics = useMemo(() => {
       if (historicalData.length === 0) return null;
@@ -1079,21 +1095,39 @@ const HistoryData: React.FC = () => {
             {/* 统计信息卡片 */}
             {statistics && historicalData.length > 0 && (
                <Row gutter={16} style={{ marginBottom: "16px" }}>
-                  {Object.entries(statistics).map(([key, value]: [string, any]) => (
-                     <Col span={6} key={key}>
-                        <Card>
-                           <Statistic
-                              title={key}
-                              value={value.avg.toFixed(2)}
-                              suffix={
-                                 <span style={{ fontSize: "12px" }}>
-                                    Max: {value.max.toFixed(1)} / Min: {value.min.toFixed(1)}
-                                 </span>
-                              }
-                           />
-                        </Card>
-                     </Col>
-                  ))}
+                  {Object.entries(statistics).map(([key, value]: [string, any]) => {
+                     // 第一行：指标名称（有中文展示中文，否则回退到原 key）
+                     const label = statisticLabelMap[dataCategory]?.[key] ?? key;
+                     return (
+                        <Col span={6} key={key}>
+                           <div
+                              style={{
+                                 height: "68px",
+                                 padding: "8px 12px",
+                                 border: "1px solid #f0f0f0",
+                                 borderRadius: "8px",
+                                 background: "#fff",
+                                 display: "flex",
+                                 flexDirection: "column",
+                                 justifyContent: "space-between",
+                              }}
+                           >
+                              {/* 第一行：指标名称 */}
+                              <div style={{ fontSize: "13px", color: "#8c8c8c", lineHeight: 1.2 }}>{label}</div>
+                              {/* 第二行：平均值 */}
+                              <div style={{ fontSize: "20px", fontWeight: 600, lineHeight: 1.2 }}>
+                                 {value.avg.toFixed(2)}
+                              </div>
+                              {/* 第三行：Max（暗红）/ Min（暗绿） */}
+                              <div style={{ fontSize: "12px", lineHeight: 1.2 }}>
+                                 <span style={{ color: "#a8071a" }}>Max: {value.max.toFixed(1)}</span>
+                                 <span style={{ color: "#bfbfbf", margin: "0 6px" }}>/</span>
+                                 <span style={{ color: "#389e0d" }}>Min: {value.min.toFixed(1)}</span>
+                              </div>
+                           </div>
+                        </Col>
+                     );
+                  })}
                </Row>
             )}
 

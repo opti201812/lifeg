@@ -321,7 +321,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
                      }
                      await axios.delete(`${config.backend.url}/associations/${associationId}`);
                      message.success("撤防成功");
-                     navigate("/overview", { replace: true });
+                     navigate("/dashboard/overview", { replace: true });
                   } catch (error) {
                      console.error("撤防失败:", error);
                      message.error("撤防失败");
