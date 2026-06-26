@@ -10,7 +10,7 @@ const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement)
 
 root.render(
    <Provider store={store}>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
          <GlobalStyle />
          <Routes>
             <Route path='/*' element={<App />} />
