@@ -61,3 +61,28 @@ export const formatValue = (value: number | null): string => {
    if (value === null) return "-";
    return value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);
 };
+
+/**
+ * 判断综合评测某项指标是否处于异常（需红字高亮）状态
+ *
+ * 依据 seriesDefaults.ts 中各指标的限值线：
+ * - 压力值 stressEmotion：≥90 高压力
+ * - 疲劳耐受值 fatigueTolerance：≥90 高疲劳
+ * - 睡眠质量分数 sleepQuality：<70 差睡眠质量
+ * - 心梗风险值 heartAttackRisk：≥50 高风险
+ */
+export const isComprehensiveValueAbnormal = (key: string, value: number | null): boolean => {
+   if (value === null) return false;
+   switch (key) {
+      case "stressEmotion":
+         return value >= 90;
+      case "fatigueTolerance":
+         return value >= 90;
+      case "sleepQuality":
+         return value < 70;
+      case "heartAttackRisk":
+         return value >= 50;
+      default:
+         return false;
+   }
+};

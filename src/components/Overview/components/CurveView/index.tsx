@@ -70,6 +70,7 @@ const CurveView: React.FC<CurveViewProps> = ({ onCardClick, onAddPersonnel }) =>
       { key: "basic", label: "基础体征" },
       { key: "analysis", label: "心率分析" },
       { key: "comprehensive", label: "综合评测" },
+      { key: "sleep", label: "睡眠分析" },
    ];
 
    // 稳定的空数组

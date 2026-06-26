@@ -26,7 +26,7 @@ const AddPersonnelCard: React.FC<AddPersonnelCardProps> = ({
 
    return (
       <Card
-         bordered={false}
+         variant='borderless'
          className='add-personnel-card'
          styles={{ body: { padding: "16px" } }}
          style={{ minHeight: "300px", width: "100%" }}

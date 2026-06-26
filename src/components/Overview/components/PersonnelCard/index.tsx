@@ -46,7 +46,7 @@ const PersonnelCard: React.FC<PersonnelCardProps> = ({
       console.warn(`[PersonnelCard] 没有设备信息: personnelId=${personnel.id}`);
       return (
          <Col span={chartConfig.cardGridSpan} key={`${room.id}-${personnel.id}`}>
-            <Card bordered={false} onClick={onCardClick}>
+            <Card variant='borderless' onClick={onCardClick}>
                <div style={{ textAlign: "center", padding: "20px" }}>
                   <div>{room.name}</div>
                   <div style={{ fontSize: "12px", color: "#888" }}>{showPersonnelName ? personnel.name : ""}</div>
@@ -62,8 +62,8 @@ const PersonnelCard: React.FC<PersonnelCardProps> = ({
       breathRate,
       distance,
       roomAndRadarData,
-      // 🔥 新增字段
-      reflection,
+      // 🔥 信噪比：取环境干扰值 environmentInterference
+      environmentInterference,
       braceletHeartRate,
       systolicPressure,
       diastolicPressure,
@@ -169,7 +169,7 @@ const PersonnelCard: React.FC<PersonnelCardProps> = ({
    return (
       <Col span={chartConfig.cardGridSpan} key={`${room.id}-${personnel.id}`}>
          <Card
-            bordered={false}
+            variant='borderless'
             onClick={onCardClick}
             className={alarms.find((item) => item.personnelId == personnel.id) ? "alarm-card" : ""}
          >
@@ -259,8 +259,8 @@ const PersonnelCard: React.FC<PersonnelCardProps> = ({
                <DataItem
                   icon={<DashboardOutlined style={{ fontSize: 20, color: "#1890ff" }} />}
                   label='信噪比'
-                  value={reflection}
-                  dataKey='reflection'
+                  value={environmentInterference}
+                  dataKey='environmentInterference'
                />
             </Row>
 

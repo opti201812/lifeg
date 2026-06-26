@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Col, Card, Spin } from "antd";
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 import { RoomPersonnel } from "../../../types";
@@ -6,7 +6,8 @@ import SleepDurationChart from "../../SleepDurationChart";
 import OptimizedUnifiedChart from "./OptimizedUnifiedChart";
 import { ChartDataPoint, SeriesConfig } from "../../../../../shared";
 import { getValueForSeries } from "../utils/dataTransformers";
-import { getIconForSeriesKey, getTrendIcon, formatValue } from "../utils/chartHelpers";
+import { getIconForSeriesKey, getTrendIcon, formatValue, isComprehensiveValueAbnormal } from "../utils/chartHelpers";
+import { generateComprehensiveMockData } from "../utils/comprehensiveMockData";
 import chartConfig from "../../../../../config/chartConfig";
 
 interface PersonnelChartCardProps {
@@ -43,6 +44,12 @@ const PersonnelChartCard: React.FC<PersonnelChartCardProps> = ({
          ? parseInt(roomPersonnel.personnel.id, 10)
          : roomPersonnel.personnel.id;
 
+   // 综合评测：真实数据尚未接入，使用 mock 数据绘制曲线（各卡片按 personnelId 生成稳定数据）
+   const comprehensiveMockData = useMemo(
+      () => generateComprehensiveMockData(personnelId),
+      [personnelId]
+   );
+
    return (
       <Col span={chartConfig.cardGridSpan} key={`personnel-${roomPersonnel.associationId}`}>
          <Card
@@ -78,12 +85,21 @@ const PersonnelChartCard: React.FC<PersonnelChartCardProps> = ({
                      <Spin size='small' style={{ marginRight: 8 }} />
                      加载历史数据...
                   </div>
-               ) : activeSubTab === "comprehensive" ? (
-                  // 综合评测：使用睡眠时长图表
+               ) : activeSubTab === "sleep" ? (
+                  // 睡眠分析：使用睡眠时长图表
                   <SleepDurationChart
                      key={`sleep-chart-${personnelId}`}
                      data={chartData}
                      height={chartConfig.chartHeight}
+                  />
+               ) : activeSubTab === "comprehensive" ? (
+                  // 综合评测：合并曲线（压力/疲劳耐受/睡眠质量/心梗风险），使用与基础体征相同的基础图表组件
+                  <OptimizedUnifiedChart
+                     key={`comp-chart-${personnelId}-${activeSeriesConfigs.map((c) => c.key).join("-")}`}
+                     data={comprehensiveMockData}
+                     seriesConfigs={activeSeriesConfigs}
+                     height={chartConfig.chartHeight}
+                     personnelId={personnelId}
                   />
                ) : activeSeriesConfigs.length > 0 ? (
                   // 其他标签页：使用折线图
@@ -114,13 +130,21 @@ const PersonnelChartCard: React.FC<PersonnelChartCardProps> = ({
                <div style={{ display: "grid", gridTemplateColumns: "repeat(8, minmax(0, 1fr))", gap: "8px" }}>
                   {/* 综合评测下只显示状态类数据（压力、疲劳、心梗风险、睡眠质量），不显示时长数据 */}
                   {activeSubTab === "comprehensive"
-                     ? // 综合评测：只显示评测指标
+                     ? // 综合评测：显示四项评测指标，取自 mock 最新点；高风险/高压力/高疲劳/差睡眠质量时红字高亮
                        ["stressEmotion", "fatigueTolerance", "heartAttackRisk", "sleepQuality"].map((key) => {
                           const cfg = seriesConfigs.find((c) => c.key === key);
                           if (!cfg) return null;
-                          const value = getValueForSeries(personnelId, cfg, roomPersonnel.deviceInfo);
+                          // 真实数据尚未接入，取 mock 曲线最新一个点的值
+                          const latestPoint = comprehensiveMockData[comprehensiveMockData.length - 1];
+                          const value =
+                             latestPoint != null
+                                ? (latestPoint as ChartDataPoint)[key as keyof ChartDataPoint] as unknown as number | null
+                                : null;
+                          const numericValue =
+                             value === null || value === undefined || Number.isNaN(Number(value)) ? null : Number(value);
                           const icon = getIconForSeriesKey(cfg.key);
-                          const trendIcon = getTrendIcon(value, cfg);
+                          const trendIcon = getTrendIcon(numericValue, cfg);
+                          const abnormal = isComprehensiveValueAbnormal(cfg.key, numericValue);
 
                           return (
                              <span
@@ -136,7 +160,15 @@ const PersonnelChartCard: React.FC<PersonnelChartCardProps> = ({
                                 title={cfg.name}
                              >
                                 <span style={{ color: cfg.color, flexShrink: 0 }}>{icon}</span>
-                                <span style={{ flexShrink: 0 }}>{formatValue(value)}</span>
+                                <span
+                                   style={{
+                                      flexShrink: 0,
+                                      color: abnormal ? "#f5222d" : undefined,
+                                      fontWeight: abnormal ? 600 : undefined,
+                                   }}
+                                >
+                                   {formatValue(numericValue)}
+                                </span>
                                 {trendIcon && <span style={{ flexShrink: 0 }}>{trendIcon}</span>}
                              </span>
                           );

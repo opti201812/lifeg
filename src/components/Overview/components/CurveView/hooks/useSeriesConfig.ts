@@ -22,7 +22,8 @@ export const useSeriesConfig = (activeSubTab: string) => {
    const groupKeyByTab: Record<string, string> = {
       basic: "basicVitals",
       analysis: "vitalAnalysis",
-      comprehensive: "sleepMonitoring", // 根据 seriesDefaults.ts，综合评测对应 sleepMonitoring
+      comprehensive: "comprehensiveEvaluation", // 综合评测：压力/疲劳耐受/睡眠质量/心梗风险
+      sleep: "sleepMonitoring", // 睡眠分析：睡眠状态/姿态/各睡眠时长
    };
    const currentGroupKey = groupKeyByTab[activeSubTab];
 
