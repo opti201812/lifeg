@@ -1,6 +1,6 @@
 // components/PersonnelManagement/index.tsx
 import React, { useState, useCallback, useEffect } from "react";
-import { Table, Button, message } from "antd";
+import { Table, Button, message, Popconfirm } from "antd";
 import { settingSpace } from "../../styles/theme";
 import axios from "axios";
 import config from "../../config";
@@ -23,6 +23,17 @@ const PersonnelManagement: React.FC = () => {
          }
       };
       fetchPersonnel();
+   }, []);
+
+   const handleDelete = useCallback(async (id: number | string) => {
+      try {
+         await axios.delete(`${config.backend.url}/personnel/${id}`);
+         setPersonnelData((prev) => prev.filter((p) => String(p.id) !== String(id)));
+         message.success("人员已删除");
+      } catch (error: any) {
+         const backendMsg = error?.response?.data?.error;
+         message.error(backendMsg || "删除人员失败");
+      }
    }, []);
 
    const columns = [
@@ -55,8 +66,18 @@ const PersonnelManagement: React.FC = () => {
          title: "操作",
          key: "action",
          render: (_: any, record: any) => (
-            <div style={{ display: "flex", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                <Button onClick={() => navigate(`/dashboard/personnel-management/${record.id}`)}>编辑</Button>
+               <Popconfirm
+                  title='确认删除该人员？'
+                  description='删除后该人员将从系统中移除，不可恢复。'
+                  okText='删除'
+                  okButtonProps={{ danger: true }}
+                  cancelText='取消'
+                  onConfirm={() => handleDelete(record.id)}
+               >
+                  <Button danger>删除</Button>
+               </Popconfirm>
             </div>
          ),
       },
