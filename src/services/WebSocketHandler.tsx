@@ -69,7 +69,7 @@ const WebSocketHandler: React.FC = () => {
             "有令牌:",
             !!token,
             "令牌长度:",
-            token?.length || 0
+            token?.length || 0,
          );
          if (token) {
             console.log("[WebSocket] Token 前10个字符:", token.substring(0, 10) + "...");
@@ -87,7 +87,6 @@ const WebSocketHandler: React.FC = () => {
          ws.onmessage = (event) => {
             try {
                const data = JSON.parse(event.data);
-               console.log("[WebSocket] 收到消息类型:", data.type);
 
                // 处理连接消息，检查认证状态
                if (data.type === "connection") {
@@ -139,7 +138,7 @@ const WebSocketHandler: React.FC = () => {
                               devices: latestData.devices,
                               timestamp: latestData.timestamp || Date.now(),
                            },
-                        })
+                        }),
                      );
                   });
                   return;
@@ -156,7 +155,7 @@ const WebSocketHandler: React.FC = () => {
                            addAlarm({
                               personnelId: parseInt(personnelId),
                               ...alertItem,
-                           })
+                           }),
                         );
                      });
                   });

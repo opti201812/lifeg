@@ -8,6 +8,7 @@ import { removeAlarm } from "../../../../store/dataSlice";
 import { useDispatch } from "react-redux";
 import axios from "axios";
 import config from "../../../../config";
+import { normalizeRadarDistanceToMeters } from "../../../../shared/src/utils/radarDistance";
 
 interface AlarmDevices {
    radar?: Array<{
@@ -118,9 +119,10 @@ const AlarmView: React.FC<AlarmViewProps> = ({ alarms, rooms, loading }) => {
                const levelText = getAlarmLevelText(alarm.level);
                const text = `${timeStr}${levelText ? `【${levelText}】` : ""} ${alarm.roomName} - ${
                   alarm.message
-               } | 心率：${alarm.heartRate || "-"} 呼吸率：${alarm.breathRate || "-"} 距离：${
-                  alarm.distance ? (alarm.distance / 100).toFixed(2) + "m" : "-"
-               } `;
+               } | 心率：${alarm.heartRate || "-"} 呼吸率：${alarm.breathRate || "-"} 距离：${(() => {
+                  const meters = normalizeRadarDistanceToMeters(alarm.distance);
+                  return meters === null ? "-" : meters.toFixed(2) + "m";
+               })()} `;
 
                return (
                   <div

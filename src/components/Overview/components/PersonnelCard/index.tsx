@@ -4,7 +4,7 @@ import {
    HeartOutlined,
    BellOutlined,
    CloudOutlined,
-   DashboardOutlined,
+   SoundOutlined,
    ThunderboltOutlined,
    LineChartOutlined,
    ArrowUpOutlined,
@@ -14,6 +14,7 @@ import {
 import { RoomPersonnel } from "../../types";
 import { getTagInfo, getIcon } from "../../utils/roomHelpers";
 import { chartConfigManager } from "../../../../shared/src/utils/chartConfigManager";
+import { normalizeRadarDistanceToMeters } from "../../../../shared/src/utils/radarDistance";
 import chartConfig, { SINGLE_CHART_CARD_FONT_SIZE } from "../../../../config/chartConfig";
 
 interface PersonnelCardProps {
@@ -62,7 +63,7 @@ const PersonnelCard: React.FC<PersonnelCardProps> = ({
       breathRate,
       distance,
       roomAndRadarData,
-      // 🔥 信噪比：取环境干扰值 environmentInterference
+      // 🔥 环境干扰值 environmentInterference（越低越好，0=无干扰为最佳）
       environmentInterference,
       braceletHeartRate,
       systolicPressure,
@@ -233,7 +234,7 @@ const PersonnelCard: React.FC<PersonnelCardProps> = ({
                   <Col span={4}>{getIcon(roomAndRadarData)}</Col>
                </Row>
             </div>
-            {/* 🔥 第一行：保留的三项 + 信噪比 */}
+            {/* 🔥 第一行：保留的三项 + 环境干扰 */}
             <Row gutter={[8, 8]} style={{ marginTop: 16 }}>
                <DataItem
                   icon={<HeartOutlined style={{ fontSize: 20, color: "red" }} />}
@@ -254,11 +255,14 @@ const PersonnelCard: React.FC<PersonnelCardProps> = ({
                   label='距离'
                   value={distance}
                   dataKey='distance'
-                  formatter={(val) => (val === "-" ? "-" : (val / 100).toFixed(2) + "米")}
+                  formatter={(val) => {
+                     const meters = normalizeRadarDistanceToMeters(val);
+                     return meters === null ? "-" : meters.toFixed(2) + "米";
+                  }}
                />
                <DataItem
-                  icon={<DashboardOutlined style={{ fontSize: 20, color: "#1890ff" }} />}
-                  label='信噪比'
+                  icon={<SoundOutlined style={{ fontSize: 20, color: "#faad14" }} />}
+                  label='环境干扰'
                   value={environmentInterference}
                   dataKey='environmentInterference'
                />

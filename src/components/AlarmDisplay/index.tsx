@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import axios, { AxiosError } from "axios";
 import config from "../../config";
 import * as ExcelJS from "exceljs";
+import { normalizeRadarDistanceToMeters } from "../../shared/src/utils/radarDistance";
 
 const { RangePicker } = DatePicker;
 
@@ -203,19 +204,22 @@ const AlarmDisplay: React.FC = () => {
          const worksheet = workbook.addWorksheet("Alarm Data");
 
          // 准备导出数据
-         const newData = alarmData.map((item: any) => ({
-            人员编号: item.personnel_id,
-            姓名: item.name,
-            身份证号: item.id_number,
-            心率: item.heart_rate,
-            呼吸: item.breath_rate,
-            雷达距离: (parseInt(item.distance) / 100).toFixed(2),
-            报警: item.alarm_level ? "是" : "否",
-            体位: item.pose,
-            环境: item.environment,
-            告警级别: item.alarm_level,
-            报警时间: dayjs(item.create_date).format("YYYY-MM-DD HH:mm:ss"),
-         }));
+         const newData = alarmData.map((item: any) => {
+            const distanceMeters = normalizeRadarDistanceToMeters(item.distance);
+            return {
+               人员编号: item.personnel_id,
+               姓名: item.name,
+               身份证号: item.id_number,
+               心率: item.heart_rate,
+               呼吸: item.breath_rate,
+               雷达距离: distanceMeters === null ? "" : distanceMeters.toFixed(2),
+               报警: item.alarm_level ? "是" : "否",
+               体位: item.pose,
+               环境: item.environment,
+               告警级别: item.alarm_level,
+               报警时间: dayjs(item.create_date).format("YYYY-MM-DD HH:mm:ss"),
+            };
+         });
 
          // 添加表头
          const headers = Object.keys(newData[0]);

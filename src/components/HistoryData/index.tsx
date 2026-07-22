@@ -18,6 +18,7 @@ import dayjs from "dayjs";
 import axios, { AxiosError } from "axios";
 import config from "../../config";
 import * as ExcelJS from "exceljs";
+import { normalizeRadarDistanceToMeters } from "../../shared/src/utils/radarDistance";
 
 const { RangePicker } = DatePicker;
 
@@ -171,7 +172,8 @@ const HistoryData: React.FC = () => {
             // 基础体征 - 使用 radar_heart_rate 作为主要心率
             heartRate: safeParseFloat(item.radar_heart_rate) ?? safeParseFloat(item.bracelet_heart_rate) ?? 0,
             breathRate: safeParseFloat(item.breath_rate) ?? 0,
-            distance: safeParseFloat(item.distance) ?? 0,
+            // 兼容新旧后端：>5 按厘米折算到米，≤5 认为已是米
+            distance: normalizeRadarDistanceToMeters(item.distance) ?? 0,
             // 血压
             systolicPressure: safeParseFloat(item.bracelet_systolic_pressure) ?? 0,
             diastolicPressure: safeParseFloat(item.bracelet_diastolic_pressure) ?? 0,

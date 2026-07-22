@@ -11,6 +11,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../../store";
 import axios from "axios";
 import config from "../../config";
+import { normalizeRadarDistanceToMeters } from "../../shared/src/utils/radarDistance";
 
 interface WeeklyDataSlideProps {
    roomInfo: { name: string; age: number; gender: string; roomId: number; personnelId?: number | null };
@@ -55,7 +56,11 @@ const WeeklyDataSlide: React.FC<WeeklyDataSlideProps> = ({ roomInfo, isActive })
             });
 
             setDataDistance(
-               response.data.map((item: any) => ({ date: new Date(item.time).getTime(), value: item.distance }))
+               response.data.map((item: any) => ({
+                  date: new Date(item.time).getTime(),
+                  // 兼容新旧后端数据：>5 按厘米，≤5 按米
+                  value: normalizeRadarDistanceToMeters(item.distance),
+               }))
             );
             setDataHeartBeat(
                response.data.map((item: any) => ({

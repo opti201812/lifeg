@@ -14,6 +14,7 @@ import {
    AggregatedData,
    RoomTemplate,
 } from "../types";
+import { normalizeRadarDistanceToMeters } from "../shared/src/utils/radarDistance";
 
 interface Association {
    id?: number;
@@ -196,7 +197,15 @@ const aggregateData = (personnel: PersonnelState): AggregatedData => {
          validRadars.length / 2
             ? "坐姿"
             : "卧姿",
-      distance: Math.round(validRadars.reduce((sum: number, r: RadarData) => sum + r.distance, 0) / validRadars.length),
+      distance: (() => {
+         // 兼容新旧后端：先把各雷达 distance 归一化到米，再求均值
+         const meters = validRadars
+            .map((r: RadarData) => normalizeRadarDistanceToMeters(r.distance))
+            .filter((v): v is number => v !== null);
+         if (meters.length === 0) return 0;
+         const avg = meters.reduce((sum, v) => sum + v, 0) / meters.length;
+         return Math.round(avg * 100) / 100; // 保留两位小数
+      })(),
    };
 };
 

@@ -8,6 +8,7 @@ import axios from "axios";
 import config from "../../config";
 import { createSelector } from "@reduxjs/toolkit";
 import { theme } from "../../styles/theme";
+import { normalizeRadarDistanceToMeters } from "../../shared/src/utils/radarDistance";
 
 interface AlarmDevices {
    radar?: Array<{
@@ -81,9 +82,10 @@ const getAlarmDisplayText = (alarm: any, rooms: Room[]) => {
         }）`
       : "";
 
+   const distanceMeters = normalizeRadarDistanceToMeters(alarm.distance);
    const text = `${timeStr}${levelText ? `【${levelText}】` : ""} ${roomName} - ${alarm.message} | 心率：${
       alarm.heartRate || "-"
-   } 呼吸率：${alarm.breathRate || "-"} 距离：${alarm.distance ? (alarm.distance / 100).toFixed(2) + "m" : "-"} `;
+   } 呼吸率：${alarm.breathRate || "-"} 距离：${distanceMeters === null ? "-" : distanceMeters.toFixed(2) + "m"} `;
 
    // const text = `${timeStr}${levelText ? `【${levelText}】` : ""} ${roomName} - ${alarm.message} | 心率：${
    //    alarm.heartRate || "-"

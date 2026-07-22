@@ -1,4 +1,5 @@
 import { ChartDataPoint, SeriesConfig } from "../../../../../shared";
+import { normalizeRadarDistanceToMeters } from "../../../../../shared/src/utils/radarDistance";
 
 /**
  * 将历史数据转换为图表数据点格式
@@ -135,7 +136,8 @@ export const getValueForSeries = (
    if (deviceInfo) {
       const key = seriesConfig.key;
       if (key === "distance") {
-         return getDeviceInfoValue("distance", (value) => value / 100);
+         // 兼容新旧后端：>5 视为厘米折算到米，≤5 认为已是米
+         return getDeviceInfoValue("distance", (value) => normalizeRadarDistanceToMeters(value) ?? 0);
       }
 
       switch (key) {
@@ -237,7 +239,8 @@ export const getValueForSeries = (
             const rawValue = validRadar[key as keyof typeof validRadar];
             const numericValue = parseNumericValue(rawValue);
             if (numericValue !== null) {
-               return key === "distance" ? numericValue / 100 : numericValue; // distance 需要转换
+               // distance 需要归一化到米（兼容新旧后端）
+               return key === "distance" ? normalizeRadarDistanceToMeters(numericValue) ?? 0 : numericValue;
             }
          }
       }

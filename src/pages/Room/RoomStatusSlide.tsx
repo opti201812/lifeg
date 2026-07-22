@@ -12,6 +12,7 @@ import { RoomInfo } from "./RoomInfo";
 import { RadarData } from "../../types";
 import { theme } from "../../styles/theme";
 import { getBatteryStatus } from "../../utils";
+import { normalizeRadarDistanceToMeters } from "../../shared/src/utils/radarDistance";
 import { useNavigate } from "react-router-dom";
 
 interface RoomStatusSlideProps {
@@ -86,13 +87,15 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
    const radarData = latestDeviceData?.devices?.radar || previousRadarData || [];
    const braceletData = latestDeviceData?.devices?.bracelet || previousBraceletData || null;
 
-   // 选择环境值较大的雷达数据
+   // 选择环境干扰较小的雷达数据（干扰越低信号越佳；0=无干扰为合法最佳值）
    let selectedRadarData = null;
-   const filteredRadarData = radarData.filter((r: RadarData) => r.environmentInterference > 0);
+   const filteredRadarData = radarData.filter(
+      (r: RadarData) => r.environmentInterference != null && r.environmentInterference >= 0
+   );
 
    if (filteredRadarData.length > 0) {
       selectedRadarData = filteredRadarData.reduce((prev: RadarData, current: RadarData) =>
-         prev.environmentInterference > current.environmentInterference ? prev : current
+         prev.environmentInterference < current.environmentInterference ? prev : current
       );
    }
 
@@ -282,7 +285,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
                            <img src='/images/radar2.png' alt='Distance' style={styles.icons.imageIcon} />,
                            `${
                               !isRadarDataExpired && selectedRadarData?.distance
-                                 ? (selectedRadarData?.distance / 100).toFixed(2)
+                                 ? (normalizeRadarDistanceToMeters(selectedRadarData?.distance) ?? 0).toFixed(2)
                                  : "-"
                            } 米`,
                            styles.heights.radar

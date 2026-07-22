@@ -10,6 +10,7 @@ import axios from "axios";
 import config from "../../config";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
+import { normalizeRadarDistanceToMeters } from "../../shared/src/utils/radarDistance";
 
 interface DailyDataSlideProps {
    roomInfo: { name: string; age: number; gender: string; roomId: number; personnelId?: number | null };
@@ -57,7 +58,8 @@ const DailyDataSlide: React.FC<DailyDataSlideProps> = ({ roomInfo, isActive }) =
 
             const processedData = response.data.map((item: any) => ({
                date: item.time,
-               distance: item.distance / 100, // Convert to meters if needed
+               // 兼容新旧后端数据：>5 按厘米处理，≤5 按米处理
+               distance: normalizeRadarDistanceToMeters(item.distance) ?? 0,
                heartbeat: item.bracelet_heart_rate || item.radar_heart_rate || item.below60_heart_rate_count,
                breathing: item.breath_rate,
                environment: item.environment_interference,

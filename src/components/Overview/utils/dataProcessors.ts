@@ -119,11 +119,15 @@ export const processPersonnelDeviceData = (
       radarData = Array.isArray(deviceData.devices.radar)
          ? deviceData.devices.radar
          : [deviceData.devices.radar];
-      const filteredRadarData = radarData.filter((r: any) => r.environmentInterference > 0);
+      // environmentInterference=环境干扰（越低越好；0=无干扰为最佳合法值，后端仅丢弃 >12 的数据），故 0 不可过滤
+      const filteredRadarData = radarData.filter(
+         (r: any) => r.environmentInterference != null && r.environmentInterference >= 0
+      );
 
       if (filteredRadarData.length > 0) {
+         // 多雷达时选择环境干扰最小者（信号最佳）
          selectedRadarData = filteredRadarData.reduce((prev: any, current: any) =>
-            prev.environmentInterference > current.environmentInterference ? prev : current
+            prev.environmentInterference < current.environmentInterference ? prev : current
          );
          const selectedRadar = radars.find((r: any) => String(r.id) == String(selectedRadarData.deviceId));
          roomAndRadarData = {
