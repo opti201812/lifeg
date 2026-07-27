@@ -20,6 +20,7 @@ import {
    findBraceletDevice,
    findOximeterDevice,
 } from "../utils";
+import type { RoomData } from "../types";
 
 /**
  * 获取可用手环列表（未分配的手环）
@@ -38,6 +39,23 @@ export const fetchAvailableBraceletIds = async (): Promise<string[]> => {
    } catch (error) {
       console.error("获取可用手环失败:", error);
       throw error;
+   }
+};
+
+/**
+ * 获取可用血氧仪列表
+ */
+/**
+ * 获取房间列表（含雷达）
+ */
+export const fetchRooms = async (): Promise<RoomData[]> => {
+   try {
+      const response = await axios.get(`${config.backend.url}/rooms`);
+      const roomsData = response.data?.data || response.data || [];
+      return Array.isArray(roomsData) ? roomsData : [];
+   } catch (error) {
+      console.error("获取房间列表失败:", error);
+      return [];
    }
 };
 
@@ -175,8 +193,8 @@ export const createRegistration = async (
       throw new Error("人员ID获取失败");
    }
 
-   // 3. 如果有设备，则创建关联
-   if (hasBracelet || hasOximeter) {
+   // 3. 如果有设备或房间，则创建关联
+   if (hasBracelet || hasOximeter || values.roomId) {
       await axios.post(`${config.backend.url}/associations`, {
          ...associationPayload,
          personnelId: newPersonnelId,
@@ -193,6 +211,7 @@ export const updateRegistration = async (record: RegistrationRecord, values: any
 
    const hasBracelet = !!values.braceletId;
    const hasOximeter = !!values.oximeterId;
+   const hasRoom = !!values.roomId;
    const personnelId = record.personnelId || Number(record.id);
 
    // 1. 更新人员
@@ -200,7 +219,7 @@ export const updateRegistration = async (record: RegistrationRecord, values: any
 
    // 2. 处理关联逻辑
    const hasExistingAssociation = !!record.associationId;
-   const shouldHaveAssociation = hasBracelet || hasOximeter;
+   const shouldHaveAssociation = hasBracelet || hasOximeter || hasRoom;
 
    if (hasExistingAssociation) {
       if (shouldHaveAssociation) {

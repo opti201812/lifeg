@@ -24,11 +24,13 @@ const RegistrationPage: React.FC = () => {
       registrationRecords,
       availableBracelets,
       availableOximeters,
+      rooms,
       loading,
       tableLoading,
       loadAvailableBracelets,
       loadAvailableOximeters,
       loadRegistrationRecords,
+      loadRooms,
       loadBraceletDataForForm,
       loadOximeterDataForForm,
       refreshAllData,
@@ -46,7 +48,8 @@ const RegistrationPage: React.FC = () => {
       loadRegistrationRecords();
       loadAvailableBracelets();
       loadAvailableOximeters();
-   }, [loadRegistrationRecords, loadAvailableBracelets, loadAvailableOximeters]);
+      loadRooms();
+   }, [loadRegistrationRecords, loadAvailableBracelets, loadAvailableOximeters, loadRooms]);
 
    // 处理表单提交
    const handleFormSubmit = async (values: any) => {
@@ -114,6 +117,7 @@ const RegistrationPage: React.FC = () => {
              loading={loading}
              availableBracelets={availableBracelets}
              availableOximeters={availableOximeters}
+             rooms={rooms}
              oximeterEnabled={oximeterEnabled}
              braceletEnabled={braceletEnabled}
              oximeterId={oximeterId}

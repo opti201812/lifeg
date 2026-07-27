@@ -9,6 +9,8 @@ export interface RegistrationRecord {
    age: number;
    braceletId?: string;
    oximeterId?: string;
+   roomId?: number;
+   radarId?: string;
    oximeterEnabled: boolean;
    heartRate?: number;
    breathRate?: number;
@@ -43,6 +45,8 @@ export interface RegistrationFormValues {
    age: number | string;
    braceletId?: string | null;
    oximeterId?: string;
+   roomId?: number | string;
+   radarId?: string;
    medicalHistory?: string;
    remarks?: string;
    heartRate: number | string;
@@ -164,4 +168,17 @@ export interface OximeterConfig {
    deviceId: string;
    deviceName: string;
    connectedAt: string;
+}
+
+// 房间雷达数据类型
+export interface RadarItem {
+   id: string;
+   [key: string]: any;
+}
+
+export interface RoomData {
+   id: number;
+   name?: string;
+   radars?: (RadarItem | string)[];
+   [key: string]: any;
 }

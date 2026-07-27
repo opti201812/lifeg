@@ -35,6 +35,8 @@ export const buildRegistrationRecords = (
          age: Number(person.age) || 0,
          braceletId: assoc?.braceletId,
          oximeterId: assoc?.oximeterId,
+         roomId: assoc?.roomId,
+         radarId: assoc?.radarId,
          oximeterEnabled: !!assoc?.oximeterId,
          heartRate: assoc?.heartRate,
          breathRate: assoc?.breathRate,
@@ -75,20 +77,22 @@ export const buildPersonnelPayload = (values: any) => ({
    gender: values.gender,
    medical_history: values.medicalHistory,
    remark: values.remarks || "",
-   heart_rate: values.heartRate,
-   breath_rate: values.breathRate,
-   heart_rate_resting: values.restingHeartRate,
-   breath_rate_resting: values.restingBreathRate,
+   heart_rate: values.heartRateBase,
+   breath_rate: values.breathRateBase,
+   heart_rate_resting: values.restingHeartRateBase,
+   breath_rate_resting: values.restingBreathRateBase,
 });
 
 // 构建关联 API payload
 export const buildAssociationPayload = (values: any) => ({
    braceletId: values.braceletId || null,
    oximeterId: values.oximeterId || null,
-   heartRate: Number(values.heartRate),
-   breathRate: Number(values.breathRate),
-   restingHeartRate: Number(values.restingHeartRate),
-   restingBreathRate: Number(values.restingBreathRate),
+   roomId: values.roomId || null,
+   radarId: values.radarId || null,
+   heartRate: Number(values.heartRateBase),
+   breathRate: Number(values.breathRateBase),
+   restingHeartRate: Number(values.restingHeartRateBase),
+   restingBreathRate: Number(values.restingBreathRateBase),
 });
 
 /**
@@ -103,8 +107,8 @@ export const fillFormFromBracelet = (braceletDevice: BraceletDevice | null) => {
    const restingHeartRate = Math.max(40, heartRate - 20);
 
    return {
-      heartRate,
-      restingHeartRate,
+      heartRateBase: heartRate,
+      restingHeartRateBase: restingHeartRate,
    };
 };
 
@@ -119,15 +123,15 @@ export const fillFormFromOximeter = (oximeterDevice: OximeterDevice | null) => {
    const heartRate = data?.heartRate || 0;
 
    return {
-      spo2: data?.spo2,
-      heartRate,
-      breathRate: data?.breathRate,
-      bodyTemperature: data?.bodyTemperature,
-      systolicPressure: data?.systolicPressure,
-      diastolicPressure: data?.diastolicPressure,
+      spo2Base: data?.spo2,
+      heartRateBase: heartRate,
+      breathRateBase: data?.breathRate,
+      bodyTemperatureBase: data?.bodyTemperature,
+      systolicPressureBase: data?.systolicPressure,
+      diastolicPressureBase: data?.diastolicPressure,
       // 静息心率 = 当前心率 - 20，最低 40
-      restingHeartRate: Math.max(40, heartRate - 20),
-      restingBreathRate: data?.breathRate ? Math.max(8, data.breathRate - 4) : undefined,
+      restingHeartRateBase: Math.max(40, heartRate - 20),
+      restingBreathRateBase: data?.breathRate ? Math.max(8, data.breathRate - 4) : undefined,
    };
 };
 

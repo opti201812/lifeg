@@ -40,7 +40,6 @@ const PersonnelDetails: React.FC = () => {
 
    useEffect(() => {
       if (personnel) {
-         console.log("==> ~ personnel:", personnel);
          setIsLoading(false);
          form.setFieldsValue(personnel);
       }

@@ -9,7 +9,7 @@ export const getBraceletStatusText = (
    // 判断是否满足报警条件
    const isAlertCondition =
       (radarData.heartRate !== undefined && (radarData.heartRate < 45 || radarData.heartRate > 90)) ||
-      (radarData.environmentInterference !== undefined && radarData.environmentInterference < 12) ||
+      (radarData.environmentInterference !== undefined && radarData.environmentInterference > 12) ||
       (radarData.breathRate !== undefined && radarData.breathRate < 6);
 
    // 判断手环状态

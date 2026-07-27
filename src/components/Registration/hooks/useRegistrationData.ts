@@ -1,11 +1,12 @@
 import { useState, useCallback } from "react";
 import { message } from "antd";
-import { RegistrationRecord } from "../types";
+import { RegistrationRecord, RoomData } from "../types";
 import {
    fetchAvailableBraceletIds,
    fetchAvailableOximeterIds,
    fetchBraceletData,
    fetchOximeterData,
+   fetchRooms,
    fetchRegistrationRecordsList,
    createRegistration,
    updateRegistration,
@@ -21,6 +22,7 @@ export const useRegistrationData = () => {
    const [registrationRecords, setRegistrationRecords] = useState<RegistrationRecord[]>([]);
    const [availableBracelets, setAvailableBracelets] = useState<string[]>([]);
    const [availableOximeters, setAvailableOximeters] = useState<string[]>([]);
+   const [rooms, setRooms] = useState<RoomData[]>([]);
 
    // 获取可用手环
    const loadAvailableBracelets = useCallback(async () => {
@@ -40,7 +42,16 @@ export const useRegistrationData = () => {
          setAvailableOximeters(ids);
       } catch (error) {
          console.error("获取可用血氧仪失败:", error);
-         // 血氧仪 API 可能未实现，不提示错误
+      }
+   }, []);
+
+   // 获取房间列表（含雷达）
+   const loadRooms = useCallback(async () => {
+      try {
+         const roomsData = await fetchRooms();
+         setRooms(roomsData);
+      } catch (error) {
+         console.error("获取房间列表失败:", error);
       }
    }, []);
 
@@ -61,8 +72,8 @@ export const useRegistrationData = () => {
 
    // 刷新所有数据
    const refreshAllData = useCallback(async () => {
-      await Promise.all([loadRegistrationRecords(), loadAvailableBracelets(), loadAvailableOximeters()]);
-   }, [loadRegistrationRecords, loadAvailableBracelets, loadAvailableOximeters]);
+      await Promise.all([loadRegistrationRecords(), loadAvailableBracelets(), loadAvailableOximeters(), loadRooms()]);
+   }, [loadRegistrationRecords, loadAvailableBracelets, loadAvailableOximeters, loadRooms]);
 
    // 新增检录
    const handleCreate = useCallback(
@@ -139,12 +150,14 @@ export const useRegistrationData = () => {
       registrationRecords,
       availableBracelets,
       availableOximeters,
+      rooms,
       loading,
       tableLoading,
 
       // 数据加载
       loadAvailableBracelets,
       loadAvailableOximeters,
+      loadRooms,
       loadRegistrationRecords,
       loadBraceletDataForForm,
       loadOximeterDataForForm,

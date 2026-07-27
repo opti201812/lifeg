@@ -4,7 +4,7 @@ import { FormInstance } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import { MEDICAL_HISTORIES } from "../../../types";
 import { fillFormFromBracelet } from "../utils";
-import { BraceletDevice } from "../types";
+import { BraceletDevice, RoomData } from "../types";
 import {
    csmWebSocketManager,
    BraceletData,
@@ -17,6 +17,7 @@ interface RegistrationFormEnhancedProps {
    form: FormInstance;
    availableBracelets: string[];
    availableOximeters: string[];
+   rooms: RoomData[];
    oximeterEnabled: boolean;
    braceletEnabled: boolean;
    oximeterId?: string | null;
@@ -55,6 +56,7 @@ const RegistrationFormEnhanced: React.FC<RegistrationFormEnhancedProps> = ({
    form,
    availableBracelets,
    availableOximeters,
+   rooms,
    oximeterEnabled,
    braceletEnabled,
    oximeterId,
@@ -71,6 +73,7 @@ const RegistrationFormEnhanced: React.FC<RegistrationFormEnhancedProps> = ({
    const [loadingData, setLoadingData] = useState(false);
    const [hasAvailableOximeter, setHasAvailableOximeter] = useState(false);
    const [hasAvailableBracelet, setHasAvailableBracelet] = useState(false);
+   const [roomRadars, setRoomRadars] = useState<string[]>([]);
    const [userModifiedThresholds, setUserModifiedThresholds] = useState<Set<string>>(new Set());
    const [braceletRealTimeData, setBraceletRealTimeData] = useState<BraceletData | null>(null);
    const [oximeterRealTimeData, setOximeterRealTimeData] = useState<OximeterData | null>(null);
@@ -81,6 +84,18 @@ const RegistrationFormEnhanced: React.FC<RegistrationFormEnhancedProps> = ({
       setHasAvailableOximeter(availableOximeters.length > 0);
       setHasAvailableBracelet(availableBracelets.length > 0);
    }, [availableOximeters, availableBracelets]);
+
+   // 编辑时自动展开房间对应的雷达列表
+   useEffect(() => {
+      const roomIdVal = form.getFieldValue('roomId');
+      if (roomIdVal) {
+         const selectedRoom = rooms.find((r) => Number(r.id) === Number(roomIdVal));
+         if (selectedRoom?.radars && selectedRoom.radars.length > 0) {
+            const radarIds = selectedRoom.radars.map((r: any) => (typeof r === 'string' ? r : r.id || String(r)));
+            setRoomRadars(radarIds);
+         }
+      }
+   }, [rooms, form]);
 
    useEffect(() => {
       const handleBraceletData = (data: BraceletData) => {
@@ -126,6 +141,22 @@ const RegistrationFormEnhanced: React.FC<RegistrationFormEnhancedProps> = ({
          setOximeterRealTimeData(null);
       }
    }, [oximeterEnabled, oximeterId]);
+
+   const handleRoomChange = (roomId: number | undefined) => {
+      if (!roomId) {
+         setRoomRadars([]);
+         form.setFieldsValue({ radarId: undefined });
+         return;
+      }
+      const selectedRoom = rooms.find((r) => Number(r.id) === Number(roomId));
+      if (selectedRoom?.radars && selectedRoom.radars.length > 0) {
+         const radarIds = selectedRoom.radars.map((r: any) => (typeof r === 'string' ? r : r.id || String(r)));
+         setRoomRadars(radarIds);
+      } else {
+         setRoomRadars([]);
+      }
+      form.setFieldsValue({ radarId: undefined });
+   };
 
    const handleBraceletSelect = async (selectedBraceletId: string | undefined) => {
       if (!selectedBraceletId || !onLoadBraceletData) return;
@@ -388,6 +419,39 @@ const RegistrationFormEnhanced: React.FC<RegistrationFormEnhancedProps> = ({
                      >
                         {oximeterEnabled ? "断开血氧仪" : "连接血氧仪"}
                      </Button>
+                  </Form.Item>
+               </Col>
+            </Row>
+            <Row gutter={16}>
+               <Col span={12}>
+                  <Form.Item label='房间分配' name='roomId'>
+                     <Select
+                        placeholder='请选择房间（可选）'
+                        allowClear
+                        showSearch
+                        onChange={handleRoomChange}
+                     >
+                        {rooms.map((room) => (
+                           <Option key={room.id} value={room.id}>
+                              {room.name || `房间 ${room.id}`}
+                           </Option>
+                        ))}
+                     </Select>
+                  </Form.Item>
+               </Col>
+               <Col span={12}>
+                  <Form.Item label='雷达选择' name='radarId'>
+                     <Select
+                        placeholder='请先选择房间'
+                        allowClear
+                        disabled={roomRadars.length === 0}
+                     >
+                        {roomRadars.map((radarId) => (
+                           <Option key={radarId} value={radarId}>
+                              {radarId}
+                           </Option>
+                        ))}
+                     </Select>
                   </Form.Item>
                </Col>
             </Row>

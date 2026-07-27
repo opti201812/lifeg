@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, FormInstance } from "antd";
 import RegistrationFormEnhanced from "./RegistrationFormEnhanced";
-import { BraceletDevice, RegistrationRecord } from "../types";
+import { BraceletDevice, RegistrationRecord, RoomData } from "../types";
 
 interface RegistrationModalProps {
    visible: boolean;
@@ -11,6 +11,7 @@ interface RegistrationModalProps {
    loading: boolean;
    availableBracelets: string[];
    availableOximeters: string[];
+   rooms: RoomData[];
    oximeterEnabled: boolean;
    braceletEnabled: boolean;
    oximeterId?: string | null;
@@ -31,6 +32,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
    loading,
    availableBracelets,
    availableOximeters,
+   rooms,
    oximeterEnabled,
    braceletEnabled,
    oximeterId,
@@ -88,6 +90,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
             form={form}
             availableBracelets={availableBracelets}
             availableOximeters={availableOximeters}
+            rooms={rooms}
             oximeterEnabled={oximeterEnabled}
             braceletEnabled={braceletEnabled}
             oximeterId={oximeterId}
