@@ -10,7 +10,7 @@ import dayjs from "dayjs";
 import config from "../../../../../config";
 import { message } from "antd";
 import { RootState } from "../../../../../store";
-import { REFRESH_INTERVAL } from "../utils/constants";
+import { REFRESH_INTERVAL } from "../../../utils/constants";
 
 /**
  * 历史数据加载和管理 Hook
