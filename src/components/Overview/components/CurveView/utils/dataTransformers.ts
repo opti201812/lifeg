@@ -106,6 +106,92 @@ export const transformDeviceDataToChartPoints = (deviceData: any): ChartDataPoin
 };
 
 /**
+ * 将实时聚合设备数据转换为单个图表数据点
+ * 多雷达时按 environmentInterference 优选（与 processPersonnelDeviceData 保持一致）
+ */
+export const transformRealtimeDataToChartPoint = (
+   personDeviceData: any,
+   personnelId: number,
+   now: number = Date.now()
+): ChartDataPoint | null => {
+   const deviceData = personDeviceData?.[personnelId];
+   if (!deviceData?.devices) {
+      return null;
+   }
+
+   const timestamp = deviceData.timestamp || now;
+
+   // 雷达数据优选
+   let selectedRadarData: any = null;
+   if (deviceData.devices.radar) {
+      const radarData = Array.isArray(deviceData.devices.radar)
+         ? deviceData.devices.radar
+         : [deviceData.devices.radar];
+      const validRadarData = radarData.filter(
+         (r: any) => r.environmentInterference != null && r.environmentInterference >= 0
+      );
+      if (validRadarData.length > 0) {
+         selectedRadarData = validRadarData.reduce((prev: any, current: any) =>
+            prev.environmentInterference < current.environmentInterference ? prev : current
+         );
+      }
+   }
+
+   const braceletData = deviceData.devices.bracelet;
+   const oximeterData = deviceData.devices.oximeter;
+
+   const parseNumeric = (value: any): number | undefined => {
+      if (value === null || value === undefined || value === "-") return undefined;
+      const parsed = typeof value === "number" ? value : parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+   };
+
+   const point: ChartDataPoint = { timestamp };
+
+   if (selectedRadarData) {
+      point.heartRate = parseNumeric(selectedRadarData.heartRate);
+      point.breathRate = parseNumeric(selectedRadarData.breathRate);
+      point.distance = parseNumeric(selectedRadarData.distance);
+      point.environmentInterference = parseNumeric(selectedRadarData.environmentInterference);
+      point.reflection = parseNumeric(selectedRadarData.reflection);
+      point.sdnn = parseNumeric(selectedRadarData.sdnn);
+      point.rmssd = parseNumeric(selectedRadarData.rmssd);
+      point.pnn50 = parseNumeric(selectedRadarData.pnn50);
+      point.sdann = parseNumeric(selectedRadarData.sdann);
+      point.lfPower = parseNumeric(selectedRadarData.lfPower);
+      point.hfPower = parseNumeric(selectedRadarData.hfPower);
+      point.lfHfRatio = parseNumeric(selectedRadarData.lfHfRatio);
+      point.breathRateVariabilitySD = parseNumeric(selectedRadarData.breathRateVariabilitySD);
+      point.breathAmplitudeVariabilityCV = parseNumeric(selectedRadarData.breathAmplitudeVariabilityCV);
+      point.stressEmotion = parseNumeric(selectedRadarData.stressEmotion);
+      point.fatigueTolerance = parseNumeric(selectedRadarData.fatigueTolerance);
+      point.sleepQuality = parseNumeric(selectedRadarData.sleepQuality);
+      point.heartAttackRisk = parseNumeric(selectedRadarData.heartAttackRisk);
+      point.sleepStatus = parseNumeric(selectedRadarData.sleepStatus);
+      point.posture = parseNumeric(selectedRadarData.posture);
+   }
+
+   if (braceletData) {
+      point.braceletHeartRate = parseNumeric(braceletData.heartRate);
+      point.systolicPressure = parseNumeric(braceletData.systolicPressure);
+      point.diastolicPressure = parseNumeric(braceletData.diastolicPressure);
+      point.spo2 = parseNumeric(braceletData.spo2 || braceletData.bloodOxygen);
+      point.bodyTemperature = parseNumeric(braceletData.bodyTemperature);
+   }
+
+   if (oximeterData) {
+      point.oximeterHeartRate = parseNumeric(oximeterData.heartRate);
+      point.spo2 = parseNumeric(oximeterData.spo2);
+      point.signalQuality = parseNumeric(oximeterData.signalQuality);
+   }
+
+   const hasAnyValue = Object.entries(point).some(
+      ([key, value]) => key !== "timestamp" && value !== undefined
+   );
+   return hasAnyValue ? point : null;
+};
+
+/**
  * 根据系列配置获取数据值
  */
 export const getValueForSeries = (
