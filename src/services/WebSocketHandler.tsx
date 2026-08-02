@@ -15,6 +15,7 @@ import {
    updatePersonnelDeviceData,
 } from "../store/dataSlice";
 import { WebSocketMessage, Room } from "../types";
+import { normalizeRadarData } from "../shared/src/utils/radarDataNormalize";
 
 const ENVIRONMENT_THRESHOLD = process.env.REACT_APP_ENVIRONMENT_THRESHOLD || 10;
 
@@ -131,11 +132,23 @@ const WebSocketHandler: React.FC = () => {
 
                      // 直接更新 Redux，使用最新数据
                      const latestData = dataArray[dataArray.length - 1];
+
+                     // 🔥 V4 协议字段名归一化：stressIndex→stressEmotion、fatigueLevel→fatigueTolerance
+                     // 后端 V4 数据包改名了这两个字段，前端内部模型仍沿用 V3 命名，
+                     // 在数据入口统一补齐别名，避免卡片/曲线读到 undefined 而渲染 "-"。
+                     const rawDevices = latestData.devices;
+                     const devices = rawDevices ? { ...rawDevices } : rawDevices;
+                     if (devices?.radar) {
+                        devices.radar = Array.isArray(devices.radar)
+                           ? devices.radar.map(normalizeRadarData)
+                           : normalizeRadarData(devices.radar);
+                     }
+
                      dispatch(
                         updatePersonnelDeviceData({
                            personnelId: parseInt(personnelId),
                            data: {
-                              devices: latestData.devices,
+                              devices,
                               timestamp: latestData.timestamp || Date.now(),
                            },
                         }),
