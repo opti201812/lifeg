@@ -34,7 +34,7 @@ const RoomPage: React.FC<{
    associationId: string;
    initialSlide: number;
 }> = ({ personnelId, roomId, associationId, initialSlide }) => {
-   if (!roomId) return;
+   if (!roomId) return null;
    const [roomInfo, setRoomInfo] = useState<{
       name: string;
       age: number;

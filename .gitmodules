@@ -1,0 +1,3 @@
+[submodule "src/shared"]
+	path = src/shared
+	url = https://github.com/opti201812/life-guard-shared-components.git
