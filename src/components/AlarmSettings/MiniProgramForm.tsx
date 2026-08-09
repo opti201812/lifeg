@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Form, Input, Button, Switch, Row, Col, Table, Popconfirm, message } from "antd";
+import { Form, Input, Button, Switch, Row, Col, Table, Popconfirm, message, Tooltip } from "antd";
 import axios from "axios";
 import config from "../../config";
 import { AlertConfig, MiniConfig, OpenIdItem } from "../../types";
@@ -217,7 +217,7 @@ const MiniProgramForm: React.FC<MiniProgramFormProps> = ({ initialValues }) => {
                   valuePropName='checked'
                   rules={[{ required: true, message: "请选择是否启用微信报警消息通知" }]}
                >
-                  <Switch onChange={handleIsEnabledChange} />
+                  <Switch onChange={handleIsEnabledChange} disabled />
                </Form.Item>
             </Col>
          </Row>
@@ -248,9 +248,14 @@ const MiniProgramForm: React.FC<MiniProgramFormProps> = ({ initialValues }) => {
             </>
          )}
          <Form.Item wrapperCol={{ span: 24 }}>
-            <Button type='primary' htmlType='submit'>
-               保存设置
-            </Button>
+            <Tooltip title='暂未开通，请联系管理员'>
+               {/* span 包裹以穿透 disabled 按钮的 pointer-events，保证悬停提示可触发 */}
+               <span>
+                  <Button type='primary' htmlType='submit' disabled>
+                     保存设置
+                  </Button>
+               </span>
+            </Tooltip>
          </Form.Item>
       </Form>
    );
