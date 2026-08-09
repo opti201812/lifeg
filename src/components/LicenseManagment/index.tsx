@@ -5,6 +5,7 @@ import { Form, Input, Button, Select, message, Row, Col, Tooltip } from "antd";
 import { CopyOutlined, ImportOutlined } from "@ant-design/icons";
 import axios from "axios";
 import config from "../../config";
+import { activateLicense } from "../../services/licenseService";
 const { Option } = Select;
 
 const LicenseManagement: React.FC = () => {
@@ -112,17 +113,11 @@ const LicenseManagement: React.FC = () => {
 
    const handleSubmit = async (values: any) => {
       if (authCode) {
-         try {
-            const response = await axios.post(`${config.backend.url}/v1/license/update-license-code`, {
-               licenseCode: authCode,
-            });
-            if (response.status === 200) {
-               message.success("授权码提交成功! 请重新启动服务端，并重新登录以应用新授权");
-            } else {
-               message.error("授权码提交失败! 请勿重复提交、勿提交非本机授权码");
-            }
-         } catch (error) {
-            console.error("Error submitting license code:", error);
+         // 双写两侧：本侧(Backend) 失败界面提示；对侧(CSM) 失败仅 console
+         const result = await activateLicense(authCode);
+         if (result.backend) {
+            message.success("授权码提交成功! 请重新启动服务端，并重新登录以应用新授权");
+         } else {
             message.error("授权码提交失败! 请勿重复提交、勿提交非本机授权码");
          }
       } else {
