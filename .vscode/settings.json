@@ -1,0 +1,7 @@
+{
+   // 固定 IDE TypeScript 语言服务为项目 node_modules 版本(5.9.3)，
+   // 与 react-scripts 构建工具链一致，避免 VSCode 内置更高版本(Typescript 6.x)
+   // 对 target=ES5 / moduleResolution=node10 报弃用警告。
+   // 生效：保存后 VSCode 会提示选择 TypeScript 版本，选“使用工作区版本”即可。
+   "typescript.tsdk": "./node_modules/typescript/lib"
+}

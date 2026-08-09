@@ -1,15 +1,18 @@
 // components/PersonnelManagement/index.tsx
 import React, { useState, useCallback, useEffect } from "react";
 import { Table, Button, message, Popconfirm } from "antd";
+import { useDispatch } from "react-redux";
 import { settingSpace } from "../../styles/theme";
 import axios from "axios";
 import config from "../../config";
 import { MEDICAL_HISTORIES, Personnel, Room } from "../../types";
+import { setPersonnel as setPersonnelToStore } from "../../store/dataSlice";
 import { useNavigate, Link } from "react-router-dom";
 
 const PersonnelManagement: React.FC = () => {
    const [personnelData, setPersonnelData] = useState<Personnel[]>([]); // Changed 'users' to 'personnelData'
    const navigate = useNavigate();
+   const dispatch = useDispatch();
 
    useEffect(() => {
       const fetchPersonnel = async () => {
@@ -17,24 +20,30 @@ const PersonnelManagement: React.FC = () => {
             const response = await axios.get(`${config.backend.url}/personnel`);
 
             setPersonnelData(response.data?.data || response.data || []);
+            dispatch(setPersonnelToStore(response.data?.data || response.data || [])); // 同步到 redux，供总览即时更新
          } catch (error) {
             console.error("Error fetching personnel:", error);
             message.error("获取人员信息失败");
          }
       };
       fetchPersonnel();
-   }, []);
+   }, [dispatch]);
 
-   const handleDelete = useCallback(async (id: number | string) => {
-      try {
-         await axios.delete(`${config.backend.url}/personnel/${id}`);
-         setPersonnelData((prev) => prev.filter((p) => String(p.id) !== String(id)));
-         message.success("人员已删除");
-      } catch (error: any) {
-         const backendMsg = error?.response?.data?.error;
-         message.error(backendMsg || "删除人员失败");
-      }
-   }, []);
+   const handleDelete = useCallback(
+      async (id: number | string) => {
+         try {
+            await axios.delete(`${config.backend.url}/personnel/${id}`);
+            const remaining = personnelData.filter((p) => String(p.id) !== String(id));
+            setPersonnelData(remaining);
+            dispatch(setPersonnelToStore(remaining)); // 同步到 redux，供总览即时更新
+            message.success("人员已删除");
+         } catch (error: any) {
+            const backendMsg = error?.response?.data?.error;
+            message.error(backendMsg || "删除人员失败");
+         }
+      },
+      [dispatch, personnelData],
+   );
 
    const columns = [
       { title: "人员编号", dataIndex: "id", key: "id" },

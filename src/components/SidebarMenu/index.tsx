@@ -1,47 +1,62 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Menu } from "antd";
 import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import axios from "axios";
 import config from "../../config";
 import useMenuItems from "../../hooks/useMenuItems";
+import { setRooms, setRoomTypes } from "../../store/dataSlice";
+import { RootState } from "../../store";
 import { theme } from "../../styles/theme";
 
 const SidebarMenu: React.FC = () => {
    const navigate = useNavigate();
-   const [roomTypes, setRoomTypes] = useState<{ typeId: number; typeName: string }[]>([]);
-   const [roomsByType, setRoomsByType] = useState<{ [key: string]: { id: number; name: string }[] }>({});
+   const dispatch = useDispatch();
+
+   // 从 redux 读取房间与类型，作为单一数据源
+   const rooms = useSelector((state: RootState) => state.data.rooms);
+   const roomTypes = useSelector((state: RootState) => state.data.roomTypes);
+
+   // 兜底初始化：redux 中房间/类型为空时从后端拉取一次并写入 redux，
+   // 之后依赖管理页 dispatch(setRooms/setRoomTypes) 保持实时同步
+   useEffect(() => {
+      if (rooms.length === 0) {
+         const fetchRooms = async () => {
+            try {
+               const response = await axios.get(`${config.backend.url}/rooms`);
+               dispatch(setRooms(response.data?.data || response.data || []));
+            } catch (error) {
+               console.error("获取房间失败:", error);
+            }
+         };
+         fetchRooms();
+      }
+   }, [rooms.length, dispatch]);
 
    useEffect(() => {
-      const fetchRoomTypesAndRooms = async () => {
-         try {
-            // 获取房间类型
-            const roomTypesResponse = await axios.get(`${config.backend.url}/rooms/types`);
-            const roomTypesData = roomTypesResponse.data?.data || roomTypesResponse.data || [];
-            setRoomTypes(roomTypesData);
+      if (roomTypes.length === 0) {
+         const fetchRoomTypes = async () => {
+            try {
+               const response = await axios.get(`${config.backend.url}/rooms/types`);
+               dispatch(setRoomTypes(response.data?.data || response.data || []));
+            } catch (error) {
+               console.error("获取房间类型失败:", error);
+            }
+         };
+         fetchRoomTypes();
+      }
+   }, [roomTypes.length, dispatch]);
 
-            // 获取所有房间
-            const roomsResponse = await axios.get(`${config.backend.url}/rooms`);
-            const roomsData = roomsResponse.data?.data || roomsResponse.data || [];
-
-            // 按类型分组房间
-            const roomsGroupedByType: { [key: string]: { id: number; name: string }[] } = {};
-
-            roomTypesData.forEach((type: { typeId: number; typeName: string }) => {
-               const roomsOfType = roomsData
-                  .filter((room: any) => room.typeId === type.typeId)
-                  .map((room: any) => ({ id: room.id, name: room.name }));
-
-               roomsGroupedByType[type.typeId.toString()] = roomsOfType;
-            });
-
-            setRoomsByType(roomsGroupedByType);
-         } catch (error) {
-            console.error("获取房间类型和房间失败:", error);
-         }
-      };
-
-      fetchRoomTypesAndRooms();
-   }, []);
+   // 按类型分组房间
+   const roomsByType = useMemo(() => {
+      const grouped: { [key: string]: { id: number; name: string }[] } = {};
+      roomTypes.forEach((type: { typeId: number; typeName: string }) => {
+         grouped[type.typeId.toString()] = rooms
+            .filter((room: any) => room.typeId === type.typeId)
+            .map((room: any) => ({ id: room.id, name: room.name }));
+      });
+      return grouped;
+   }, [rooms, roomTypes]);
 
    const menuItems = useMenuItems(roomTypes, roomsByType);
 

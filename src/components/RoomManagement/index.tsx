@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Table, Button, message, Space, Modal } from "antd";
 import axios from "axios";
+import { useDispatch } from "react-redux";
 import config from "../../config";
 import AddEditRoomModal from "./AddEditRoomModal";
+import { setRooms as setRoomsToStore } from "../../store/dataSlice";
 import { Room, RoomType } from "../../types";
 
 const RoomManagement: React.FC = () => {
    const [rooms, setRooms] = useState<Room[]>([]);
+   const dispatch = useDispatch();
    const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
    const [roomTemplates, setRoomTemplates] = useState<any[]>([]);
    const [availableRadars, setAvailableRadars] = useState<any[]>([]);
@@ -28,6 +31,7 @@ const RoomManagement: React.FC = () => {
 
          const roomsData = roomsResponse.data?.data || roomsResponse.data || [];
          setRooms(roomsData);
+         dispatch(setRoomsToStore(roomsData)); // 同步到 redux，供侧边栏/总览即时更新
          setRoomTypes(initDataResponse.data.data.roomTypes);
          setRoomTemplates(initDataResponse.data.data.templates);
 
