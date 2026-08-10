@@ -16,7 +16,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "build:prod": "BUILD_PATH='/Users/kingkevin/Project/LifeGuard/develop/code/LifeGuard Backend/dist/client/build' react-scripts build",
-    "build:win:prod": "set \"BUILD_PATH=..\\LifeGuard Backend\\dist.win\\client\\build\" && react-scripts build"
+    "build:win": "set \"BUILD_PATH=..\\LifeGuard Backend\\dist.win\\client\\build\" && react-scripts build"
   },
   "keywords": [],
   "author": "",
