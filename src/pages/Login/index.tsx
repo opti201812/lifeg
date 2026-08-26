@@ -53,7 +53,8 @@ const Login: React.FC = () => {
                if (response.data.user.role === "admin") {
                   navigate("/dashboard/overview");
                } else {
-                  navigate("/dashboard/room");
+                  // user 角色直接进入人员总览，且只展示自己房间数据
+                  navigate("/dashboard/overview");
                }
             } else {
                dispatch(logout());
@@ -97,7 +98,8 @@ const Login: React.FC = () => {
             if (response.data.user.role === "admin") {
                navigate("/dashboard/overview");
             } else {
-               navigate("/dashboard/room");
+               // user 角色直接进入人员总览，且只展示自己房间数据
+               navigate("/dashboard/overview");
             }
          } else {
             message.error(response.data.message || "Login failed");

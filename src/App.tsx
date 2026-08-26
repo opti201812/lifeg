@@ -18,6 +18,7 @@ const App: React.FC = () => {
          <Routes>
             <Route path='/' element={<Navigate to='/login' />} />
             <Route path='/login' element={<Login />} />
+            {/* 所有已登录角色进入主布局；角色级权限在 DashboardRoutes 内部按路由守卫控制 */}
             <Route
                path='/dashboard/*'
                element={

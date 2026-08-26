@@ -1,5 +1,7 @@
 import React from "react";
 import { Button } from "antd";
+import { useSelector } from "react-redux";
+import { RootState } from "../../../../store";
 import { Room } from "../../types";
 
 interface RoomHeaderProps {
@@ -9,9 +11,18 @@ interface RoomHeaderProps {
 }
 
 const RoomHeader: React.FC<RoomHeaderProps> = ({ currentRoom, selectedRoom, onBackToOverview }) => {
+   const userRole = useSelector((state: RootState) => state.user.role);
+   const userRoomId = useSelector((state: RootState) => state.user.room_id);
+
    return (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-         <h2>{currentRoom ? `${currentRoom.name} 人员` : "人员总览"}</h2>
+         <h2>
+            {currentRoom
+               ? `${currentRoom.name} 人员`
+               : userRole === "admin"
+               ? "人员总览"
+               : `房间 ${userRoomId ?? ""} 人员`}
+         </h2>
 
          {selectedRoom && (
             <Button type='primary' style={{ width: 120, fontSize: 16 }} onClick={onBackToOverview}>

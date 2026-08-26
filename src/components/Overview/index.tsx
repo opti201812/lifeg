@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { message } from "antd";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { usePersonnelData } from "./hooks/usePersonnelData";
@@ -20,6 +20,24 @@ interface OverviewProps {
 
 const Overview: React.FC<OverviewProps> = () => {
    const { roomId } = useParams<{ roomId: string }>();
+   const navigate = useNavigate();
+
+   // 当前登录用户角色与房间归属：user 角色仅能查看/管理自己房间
+   const userRole = useSelector((state: RootState) => state.user.role);
+   const userRoomId = useSelector((state: RootState) => state.user.room_id);
+
+   // user 角色强制只看自己房间：忽略 URL 中传入的 roomId
+   // 未绑定房间时用 "-1"（不匹配任何房间）保证不过滤出全部房间，而是显示空
+   const effectiveRoomId =
+      userRole === "admin" ? roomId : userRoomId != null ? String(userRoomId) : "-1";
+
+   // 规范化 URL：user 必须停留在自己的房间页，内部组件（如 CurveView 曲线加载）
+   // 依赖 URL 中的 roomId，若 URL 与归属房间不一致则就地替换，避免拉到别的房间数据
+   useEffect(() => {
+      if (userRole === "user" && userRoomId != null && roomId !== String(userRoomId)) {
+         navigate(`/dashboard/overview/${userRoomId}`, { replace: true });
+      }
+   }, [userRole, userRoomId, roomId, navigate]);
 
    // 页面状态
    const [activeTab, setActiveTab] = useState<string>("card");
@@ -34,17 +52,23 @@ const Overview: React.FC<OverviewProps> = () => {
 
    // 使用自定义hooks
    const { loading, showPersonnelName, currentRoom, fetchData, fetchRoomInfo } = useRoomData();
-   const { allRoomPersonnel, rawData } = usePersonnelData(roomId);
+   const { allRoomPersonnel, rawData } = usePersonnelData(effectiveRoomId);
+
+   // user 角色仅查看本房间且无分配权限：过滤掉“添加人员”空位卡片（sortType 3）
+   const visibleRoomPersonnel = useMemo(() => {
+      if (userRole === "admin") return allRoomPersonnel;
+      return allRoomPersonnel.filter((rp) => rp.sortType !== 3);
+   }, [allRoomPersonnel, userRole]);
 
    // 🔥 稳定 props 引用，避免不必要的重新渲染
    // 使用 useMemo 稳定 allRoomPersonnel 引用（基于人员ID列表和长度）
    // 🔥 修复：先计算ID列表字符串，然后基于字符串稳定引用
    const currentPersonnelIdsKey = useMemo(() => {
-      return allRoomPersonnel
+      return visibleRoomPersonnel
          .map((p) => p.personnel?.id)
          .filter((id): id is number => id !== undefined)
          .join(",");
-   }, [allRoomPersonnel]);
+   }, [visibleRoomPersonnel]);
 
    // 🔥 使用 ref 追踪上一次的ID列表，只在真正变化时更新
    const prevPersonnelIdsKeyRef = useRef<string>("");
@@ -62,7 +86,7 @@ const Overview: React.FC<OverviewProps> = () => {
    // 🔥 关键修复：生成基于数据内容的key，确保数据更新时重新渲染
    const allRoomPersonnelDataKey = useMemo(() => {
       // 基于所有人员的关键数据生成一个key，确保数据变化时重新渲染
-      return allRoomPersonnel
+      return visibleRoomPersonnel
          .map((rp) => {
             if (!rp.personnel || !rp.deviceInfo) return "";
             const di = rp.deviceInfo;
@@ -70,15 +94,15 @@ const Overview: React.FC<OverviewProps> = () => {
             return `${rp.personnel.id}:${di.heartRate}:${di.breathRate}:${di.distance}:${di.braceletHeartRate}:${di.spo2}:${di.systolicPressure}:${di.diastolicPressure}:${di.bodyTemperature}`;
          })
          .join("|");
-   }, [allRoomPersonnel]);
+   }, [visibleRoomPersonnel]);
 
    const stableAllRoomPersonnel = useMemo(() => {
-      return allRoomPersonnel;
+      return visibleRoomPersonnel;
    }, [
       // 🔥 关键修复：使用数据内容key，确保数据更新时重新渲染
       allRoomPersonnelDataKey,
       // 如果数组长度变化，也需要更新
-      allRoomPersonnel.length,
+      visibleRoomPersonnel.length,
    ]);
 
    // 🔥 稳定数组 props 引用（基于长度）
@@ -86,7 +110,11 @@ const Overview: React.FC<OverviewProps> = () => {
    const stableAssociations = useMemo(() => rawData.associations, [rawData.associations.length]);
    const stableRoomTypes = useMemo(() => rawData.roomTypes, [rawData.roomTypes.length]);
    const stableRoomTemplates = useMemo(() => rawData.roomTemplates, [rawData.roomTemplates.length]);
-   const stableRooms = useMemo(() => rooms, [rooms.length]);
+   // user 角色只展示自己房间：rooms 列表同样过滤，避免报警等 Tab 拉到其他房间信息
+   const stableRooms = useMemo(() => {
+      if (userRole === "admin") return rooms;
+      return rooms.filter((room) => String(room.id) === String(userRoomId ?? ""));
+   }, [rooms, userRole, userRoomId]);
 
    // 🔥 关键修复：初始化数据加载
    // 使用 ref 标记是否已经初始化，避免重复加载
@@ -119,11 +147,18 @@ const Overview: React.FC<OverviewProps> = () => {
       }
    }, [roomId, fetchRoomInfo]);
 
-   // 处理设防对话框
-   const handleArm = useCallback((roomId: number) => {
-      setArmModalInitValues({ roomId });
-      setIsArmModalVisible(true);
-   }, []);
+   // 处理设防对话框（user 角色无分配/设防权限，直接拒绝）
+   const handleArm = useCallback(
+      (roomId: number) => {
+         if (userRole !== "admin") {
+            message.warning("当前账号无设防权限");
+            return;
+         }
+         setArmModalInitValues({ roomId });
+         setIsArmModalVisible(true);
+      },
+      [userRole]
+   );
 
    // 处理设防表单提交
    const handleArmSubmit = useCallback(
@@ -254,13 +289,15 @@ const Overview: React.FC<OverviewProps> = () => {
 
          {renderContent()}
 
-         <ArmPersonnelModal
-            visible={isArmModalVisible}
-            entryType='ROOM_OVERVIEW'
-            initialValues={armModalInitValues}
-            onCancel={() => setIsArmModalVisible(false)}
-            onSubmit={handleArmSubmit}
-         />
+         {userRole === "admin" && (
+            <ArmPersonnelModal
+               visible={isArmModalVisible}
+               entryType='ROOM_OVERVIEW'
+               initialValues={armModalInitValues}
+               onCancel={() => setIsArmModalVisible(false)}
+               onSubmit={handleArmSubmit}
+            />
+         )}
 
          {/* 性能监控组件（仅开发环境显示） */}
          {process.env.NODE_ENV === "development" && <PerformanceMonitor />}

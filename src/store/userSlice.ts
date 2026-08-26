@@ -49,6 +49,7 @@ const userSlice = createSlice({
          state.isAuthenticated = false;
          state.role = "user";
          state.name = "";
+         state.room_id = null; // 清空房间归属，避免切换账号后残留旧房间导致数据串房
       },
    },
 });
