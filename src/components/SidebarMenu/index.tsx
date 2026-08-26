@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Menu } from "antd";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import axios from "axios";
 import config from "../../config";
@@ -9,8 +9,13 @@ import { setRooms, setRoomTypes } from "../../store/dataSlice";
 import { RootState } from "../../store";
 import { theme } from "../../styles/theme";
 
+// 房间数超过该阈值时默认折叠，避免菜单过长
+const ROOMS_COLLAPSE_THRESHOLD = 8;
+const ROOMS_COLLAPSE_STORAGE_KEY = "menu.roomsCollapsed";
+
 const SidebarMenu: React.FC = () => {
    const navigate = useNavigate();
+   const location = useLocation();
    const dispatch = useDispatch();
 
    // 从 redux 读取房间与类型，作为单一数据源
@@ -58,10 +63,35 @@ const SidebarMenu: React.FC = () => {
       return grouped;
    }, [rooms, roomTypes]);
 
-   const menuItems = useMenuItems(roomTypes, roomsByType);
+   const roomCount = useMemo(
+      () => Object.values(roomsByType).reduce((sum, list) => sum + list.length, 0),
+      [roomsByType]
+   );
+
+   // 房间列表折叠状态：null 表示用户尚未手动操作，按房间数阈值决定默认
+   const [roomsCollapsed, setRoomsCollapsed] = useState<boolean | null>(() => {
+      const stored = localStorage.getItem(ROOMS_COLLAPSE_STORAGE_KEY);
+      return stored === null ? null : stored === "1";
+   });
+
+   const isRoomsCollapsed = roomsCollapsed ?? roomCount > ROOMS_COLLAPSE_THRESHOLD;
+
+   const toggleRoomsCollapsed = () => {
+      setRoomsCollapsed((prev) => {
+         const next = !(prev ?? roomCount > ROOMS_COLLAPSE_THRESHOLD);
+         localStorage.setItem(ROOMS_COLLAPSE_STORAGE_KEY, next ? "1" : "0");
+         return next;
+      });
+   };
+
+   const menuItems = useMenuItems(roomTypes, roomsByType, {
+      roomsCollapsed: isRoomsCollapsed,
+   });
 
    const handleMenuClick = ({ key }: { key: string }) => {
-      if (key === "logout") {
+      if (key === "rooms-collapse") {
+         toggleRoomsCollapsed();
+      } else if (key === "logout") {
          // 退出登录逻辑在MainLayout中处理
       } else if (key === "room-management") {
          navigate("/dashboard/room-management");
@@ -85,11 +115,16 @@ const SidebarMenu: React.FC = () => {
       }
    };
 
+   // 受控选中：当前路由对应的菜单项 key。room-{id} 与固定 key 均可直接对应
+   const selectedKey = location.pathname.includes("/overview/")
+      ? `room-${location.pathname.split("/").pop()}`
+      : location.pathname.split("/").pop() ?? "overview";
+
    return (
       <Menu
          theme='dark'
          mode='inline'
-         defaultSelectedKeys={["overview"]}
+         selectedKeys={[selectedKey]}
          items={menuItems}
          onClick={handleMenuClick}
          style={{

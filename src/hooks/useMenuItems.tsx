@@ -8,16 +8,62 @@ import {
    AppstoreOutlined,
    HomeOutlined,
    WifiOutlined,
+   RightOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
+interface RoomMenuOptions {
+   /** 房间列表是否折叠（为 true 时隐藏房间项，仅显示折叠头） */
+   roomsCollapsed?: boolean;
+}
+
 const useMenuItems = (
    roomTypes: { typeId: number; typeName: string }[],
-   roomsByType: { [key: string]: { id: number; name: string }[] }
+   roomsByType: { [key: string]: { id: number; name: string }[] },
+   options?: RoomMenuOptions
 ) => {
    const navigate = useNavigate();
+   const { roomsCollapsed = false } = options ?? {};
 
    return useMemo(() => {
+      const rooms = Object.values(roomsByType).flat();
+
+      // 折叠头：房间数大于 0 时显示，点击切换折叠（由 SidebarMenu 处理，不导航）
+      const roomsCollapseHeader =
+         rooms.length > 0
+            ? [
+                 {
+                    key: "rooms-collapse",
+                    icon: <AppstoreOutlined />,
+                    label: (
+                       <span
+                          style={{
+                             display: "flex",
+                             alignItems: "center",
+                             gap: 6,
+                             width: "100%",
+                          }}
+                       >
+                          <span>房间列表</span>
+                          <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 12 }}>
+                             ({rooms.length})
+                          </span>
+                          <RightOutlined
+                             style={{
+                                fontSize: 10,
+                                marginLeft: "auto",
+                                transition: "transform 0.2s",
+                                transform: roomsCollapsed
+                                   ? "rotate(0deg)"
+                                   : "rotate(90deg)",
+                             }}
+                          />
+                       </span>
+                    ),
+                 },
+              ]
+            : [];
+
       return [
          {
             key: "rooms",
@@ -30,13 +76,14 @@ const useMenuItems = (
                   icon: <UserOutlined />,
                },
                // 旧版总览已移除
-               ...Object.values(roomsByType)
-                  .flat()
-                  .map((room) => ({
-                     key: `room-${room.id}`,
-                     label: room.name,
-                     icon: <HomeOutlined />,
-                  })),
+               ...roomsCollapseHeader,
+               ...(roomsCollapsed
+                  ? []
+                  : rooms.map((room) => ({
+                       key: `room-${room.id}`,
+                       label: room.name,
+                       icon: <HomeOutlined />,
+                    }))),
                {
                   key: "all-bracelets",
                   label: "全部手环",
@@ -98,7 +145,7 @@ const useMenuItems = (
             ],
          },
       ];
-   }, [navigate, roomTypes, roomsByType]);
+   }, [navigate, roomTypes, roomsByType, roomsCollapsed]);
 };
 
 export default useMenuItems;
