@@ -60,25 +60,13 @@ const AddEditRadarModal: React.FC<AddEditRadarModalProps> = ({
             targetDistance: values.targetDistance ?? 0,
          };
 
-         // 先保存雷达基本信息
+         // 保存雷达基本信息（后端 createRadar/updateRadar 会统一处理 targetDistance 的本地存储与 CSM 推送）
          if (isEditing) {
             await axios.put(`${config.backend.url}/rooms/radars/${editingRadar?.id}`, radarData);
             message.success("更新雷达成功！");
          } else {
             await axios.post(`${config.backend.url}/rooms/radars`, radarData);
             message.success("新增雷达成功！");
-         }
-
-         // 如果有目标距离，单独调用目标距离API
-         if (values.targetDistance !== undefined && values.targetDistance !== null && values.targetDistance !== editingRadar?.targetDistance) {
-            try {
-               await axios.post(`${config.backend.url}/radar/${values.id}/target-distance`, {
-                  targetDistance: values.targetDistance,
-               });
-            } catch (distanceError) {
-               console.warn("设置目标距离失败，但雷达已保存:", distanceError);
-               message.warning("雷达配置已保存，但目标距离设置失败");
-            }
          }
 
          onSuccess();

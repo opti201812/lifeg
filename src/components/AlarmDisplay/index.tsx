@@ -379,9 +379,11 @@ const AlarmDisplay: React.FC = () => {
                                        case "button_status":
                                           displayValue = value ? "是" : "否";
                                           break;
-                                       case "distance":
-                                          displayValue = value ? (parseInt(String(value)) / 100).toFixed(1) : "";
+                                       case "distance": {
+                                          const meters = normalizeRadarDistanceToMeters(value);
+                                          displayValue = meters === null ? "" : meters.toFixed(2);
                                           break;
+                                       }
                                        case "apnea":
                                           displayValue = parseInt(String(value)) > 0 ? "是" : "否";
                                           break;
@@ -472,7 +474,10 @@ const AlarmDisplay: React.FC = () => {
          title: <Tooltip title='米（雷达测量距离）'>雷达距离</Tooltip>,
          dataIndex: "distance",
          key: "distance",
-         render: (text: string) => (text ? (parseInt(text) / 100).toFixed(1) : ""),
+         render: (text: string) => {
+            const meters = normalizeRadarDistanceToMeters(text);
+            return meters === null ? "" : meters.toFixed(2);
+         },
       },
       { title: "体位", dataIndex: "pose", key: "pose" },
       {

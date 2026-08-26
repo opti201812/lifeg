@@ -25,22 +25,9 @@ const RadarManagement: React.FC = () => {
       setLoading(true);
       try {
          const response = await axios.get(`${config.backend.url}/rooms/radars`);
-         // 获取每个雷达的目标距离
+         // 后端已返回完整雷达数据（含 targetDistance），一次请求拿到全部，无需逐台查询
          const radarsData = response.data?.data || response.data || [];
-         const radarsWithDistance = await Promise.all(
-            radarsData.map(async (radar: Radar) => {
-               try {
-                  const distanceResponse = await axios.get(`${config.backend.url}/radar/${radar.id}/target-distance`);
-                  return {
-                     ...radar,
-                     targetDistance: distanceResponse.data?.data?.targetDistance ?? null,
-                  };
-               } catch {
-                  return { ...radar, targetDistance: null };
-               }
-            }),
-         );
-         setRadars(radarsWithDistance);
+         setRadars(radarsData);
       } catch (error) {
          console.error("Error fetching radars:", error);
          message.error("获取雷达数据失败！");

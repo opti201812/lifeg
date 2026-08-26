@@ -100,6 +100,7 @@ const AlarmView: React.FC<AlarmViewProps> = ({ alarms, rooms, loading }) => {
 
       return {
          ...alarm.alarm.params,
+         id: alarm.id,
          alarmTime: alarm.alarmTime,
          personnelId: alarm.personnelId,
          roomId: alarm.roomId,

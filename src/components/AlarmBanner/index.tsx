@@ -175,6 +175,7 @@ const AlarmBanner: React.FC = () => {
 
       return {
          ...alarm.alarm.params,
+         id: alarm.id,
          alarmTime: alarm.alarmTime,
          personnelId: alarm.personnelId,
          roomId: alarm.roomId,
