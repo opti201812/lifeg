@@ -14,6 +14,8 @@ import { theme } from "../../styles/theme";
 import { getBatteryStatus } from "../../utils";
 import { normalizeRadarDistanceToMeters } from "../../shared/src/utils/radarDistance";
 import { useNavigate } from "react-router-dom";
+import { RADAR_DATA_EXPIRE_TIME, BRACELET_HOLD_TIME } from "../../components/Overview/utils/constants";
+import { resolveBraceletField } from "../../shared/src/utils/braceletFieldHold";
 
 interface RoomStatusSlideProps {
    personnelId: number | null; // 使用人员ID作为入参
@@ -28,13 +30,12 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
       return state.data.personDeviceData[personnelId] || null;
    });
 
-   // 上一次的雷达数据和手环数据
+   // 上一次的雷达数据和手环数据（手环字段级保持由模块级缓存承担，无需在此缓存整包）
    const [previousRadarData, setPreviousRadarData] = useState<any>(null);
-   const [previousBraceletData, setPreviousBraceletData] = useState<any>(null);
 
-   // 上一次的雷达和手环时间戳
-   const [previousRadarTimestamp, setPreviousRadarTimestamp] = useState<string | null>(null);
-   const [previousBraceletTimestamp, setPreviousBraceletTimestamp] = useState<string | null>(null);
+   // 上一次的雷达和手环时间戳（毫秒时间戳，number）
+   const [previousRadarTimestamp, setPreviousRadarTimestamp] = useState<number | null>(null);
+   const [previousBraceletTimestamp, setPreviousBraceletTimestamp] = useState<number | null>(null);
 
    // 添加状态来跟踪数据是否过期
    const [isDataStale, setIsDataStale] = useState(false);
@@ -50,11 +51,24 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
       if (latestDeviceData) {
          if (latestDeviceData.devices?.radar) {
             setPreviousRadarData(latestDeviceData.devices.radar);
-            setPreviousRadarTimestamp(latestDeviceData.time || new Date().toISOString());
+            // 时间戳优先用雷达设备自身的 timestamp（毫秒数），回退到包时间戳/当前时刻
+            const radarArr = Array.isArray(latestDeviceData.devices.radar)
+               ? latestDeviceData.devices.radar
+               : [latestDeviceData.devices.radar];
+            const latestRadar = radarArr[radarArr.length - 1];
+            const radarTs =
+               latestRadar?.timestamp ??
+               latestDeviceData.timestamp ??
+               Date.now();
+            setPreviousRadarTimestamp(radarTs);
          }
          if (latestDeviceData.devices?.bracelet) {
-            setPreviousBraceletData(latestDeviceData.devices.bracelet);
-            setPreviousBraceletTimestamp(latestDeviceData.time || new Date().toISOString());
+            // 时间戳优先用手环设备自身的 timestamp（毫秒数），回退到包时间戳/当前时刻
+            const braceletTs =
+               latestDeviceData.devices.bracelet.timestamp ??
+               latestDeviceData.timestamp ??
+               Date.now();
+            setPreviousBraceletTimestamp(braceletTs);
          }
       }
    }, [latestDeviceData, isActive]);
@@ -68,11 +82,10 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
       return () => clearInterval(interval); // 组件卸载时清除定时器
    }, []);
 
-   // 检查数据是否过期的逻辑
+   // 检查数据是否过期的逻辑（雷达/手环各自使用常量窗口，避免硬编码 10s 导致手环过早清除）
    const now = Date.now();
-   const isRadarDataExpired = previousRadarTimestamp ? now - new Date(previousRadarTimestamp).getTime() > 10000 : true;
-   const isBraceletDataExpired = previousBraceletTimestamp
-      ? now - new Date(previousBraceletTimestamp).getTime() > 10000
+   const isRadarDataExpired = previousRadarTimestamp
+      ? now - previousRadarTimestamp > RADAR_DATA_EXPIRE_TIME
       : true;
 
    // 使用 theme 中的颜色值
@@ -85,7 +98,28 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
 
    // 使用最新数据或上一次的数据，并根据过期状态显示
    const radarData = latestDeviceData?.devices?.radar || previousRadarData || [];
-   const braceletData = latestDeviceData?.devices?.bracelet || previousBraceletData || null;
+
+   // 🔥 手环字段级保持：仅用最新包的字段做保持。
+   // 新包某字段为 null/缺失时，resolveBraceletField 用模块级缓存判定：
+   //   未超期 → 保留该字段上次有效值；超期 → 返回 '-'。
+   // 最新包整体无 bracelet 时传入 undefined，让缓存自行判定每个字段是否过期。
+   const latestBraceletRaw = latestDeviceData?.devices?.bracelet || null;
+   const nowTs = Date.now();
+   const pid = personnelId ?? -1;
+   const heldBraceletData = latestBraceletRaw
+      ? {
+           ...latestBraceletRaw,
+           heartRate: resolveBraceletField(pid, "heartRate", latestBraceletRaw.heartRate, BRACELET_HOLD_TIME, nowTs),
+           batteryVoltage: resolveBraceletField(pid, "batteryVoltage", latestBraceletRaw.batteryVoltage, BRACELET_HOLD_TIME, nowTs),
+           buttonStatus: resolveBraceletField(pid, "buttonStatus", latestBraceletRaw.buttonStatus, BRACELET_HOLD_TIME, nowTs),
+           tamperStatus: resolveBraceletField(pid, "tamperStatus", latestBraceletRaw.tamperStatus, BRACELET_HOLD_TIME, nowTs),
+        }
+      : {
+           heartRate: resolveBraceletField(pid, "heartRate", undefined, BRACELET_HOLD_TIME, nowTs),
+           batteryVoltage: resolveBraceletField(pid, "batteryVoltage", undefined, BRACELET_HOLD_TIME, nowTs),
+           buttonStatus: resolveBraceletField(pid, "buttonStatus", undefined, BRACELET_HOLD_TIME, nowTs),
+           tamperStatus: resolveBraceletField(pid, "tamperStatus", undefined, BRACELET_HOLD_TIME, nowTs),
+        };
 
    // 选择环境干扰较小的雷达数据（干扰越低信号越佳；0=无干扰为合法最佳值）
    let selectedRadarData = null;
@@ -100,7 +134,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
    }
 
    // 计算电量百分比
-   const { status: batteryStatus } = getBatteryStatus(braceletData?.batteryVoltage);
+   const { status: batteryStatus } = getBatteryStatus(heldBraceletData?.batteryVoltage);
    const CARD_HEIGHT = 160;
 
    // 统一样式配置
@@ -212,7 +246,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
                roomName={roomInfo.name}
                age={currentPersonnel?.age || ""}
                gender={currentPersonnel?.gender === "male" ? "男" : "女"}
-               room={{ ...latestDeviceData, devices: { radar: radarData, bracelet: braceletData } }}
+               room={{ ...latestDeviceData, devices: { radar: radarData, bracelet: heldBraceletData } }}
                type=''
             />
          }
@@ -227,7 +261,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
                      {renderCard(
                         "心跳",
                         <HeartOutlined style={styles.icons.heartIcon} />,
-                        `${!isBraceletDataExpired ? braceletData?.heartRate || "-" : "-"} 次/分`,
+                        `${heldBraceletData?.heartRate && heldBraceletData.heartRate !== "-" ? `${heldBraceletData.heartRate}` : "-"} 次/分`,
                         styles.heights.bracelet
                      )}
                   </Col>
@@ -235,7 +269,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
                      {renderCard(
                         "电池状态",
                         <img src='/images/battery.png' alt='Battery' style={styles.icons.imageIcon} />,
-                        `${!isBraceletDataExpired ? (batteryStatus !== null ? `${batteryStatus}` : "-") : "-"}`,
+                        `${batteryStatus !== null && batteryStatus !== "-" ? `${batteryStatus}` : "-"}`,
                         styles.heights.bracelet
                      )}
                   </Col>
@@ -243,7 +277,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
                      {renderCard(
                         "SOS",
                         <img src='/images/sos.png' alt='SOS' style={styles.icons.imageIcon} />,
-                        `${!isBraceletDataExpired ? (braceletData?.buttonStatus === 1 ? "异常" : "正常") : "-"}`,
+                        `${heldBraceletData?.buttonStatus === 1 ? "异常" : heldBraceletData?.buttonStatus === 0 ? "正常" : "-"}`,
                         styles.heights.bracelet
                      )}
                   </Col>
@@ -251,7 +285,7 @@ const RoomStatusSlide: React.FC<RoomStatusSlideProps> = ({ personnelId, roomInfo
                      {renderCard(
                         "状态",
                         <img src='/images/status.png' alt='Status' style={styles.icons.imageIcon} />,
-                        `${!isBraceletDataExpired ? (braceletData?.tamperStatus === 1 ? "异常" : "正常") : "-"}`,
+                        `${heldBraceletData?.tamperStatus === 1 ? "异常" : heldBraceletData?.tamperStatus === 0 ? "正常" : "-"}`,
                         styles.heights.bracelet
                      )}
                   </Col>

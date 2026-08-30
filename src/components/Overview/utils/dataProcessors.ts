@@ -1,58 +1,6 @@
 import { Room, Association, Personnel, RoomPersonnel } from "../types";
 import { RADAR_DATA_EXPIRE_TIME, BRACELET_HOLD_TIME } from "../utils/constants";
-
-// ========== 手环字段级缓存（数据保持机制） ==========
-
-interface BraceletFieldEntry {
-   value: number | string;
-   lastUpdateTime: number;
-}
-
-interface BraceletFieldCache {
-   braceletHeartRate: BraceletFieldEntry;
-   systolicPressure: BraceletFieldEntry;
-   diastolicPressure: BraceletFieldEntry;
-   spo2: BraceletFieldEntry;
-   bodyTemperature: BraceletFieldEntry;
-}
-
-const braceletFieldCacheMap = new Map<number, BraceletFieldCache>();
-
-function getOrCreateBraceletCache(personId: number): BraceletFieldCache {
-   if (!braceletFieldCacheMap.has(personId)) {
-      braceletFieldCacheMap.set(personId, {
-         braceletHeartRate: { value: "-", lastUpdateTime: 0 },
-         systolicPressure: { value: "-", lastUpdateTime: 0 },
-         diastolicPressure: { value: "-", lastUpdateTime: 0 },
-         spo2: { value: "-", lastUpdateTime: 0 },
-         bodyTemperature: { value: "-", lastUpdateTime: 0 },
-      });
-   }
-   return braceletFieldCacheMap.get(personId)!;
-}
-
-/**
- * 解析手环字段值，带缓存保持逻辑：
- * - 当前数据包该字段有有效值 → 更新缓存并返回
- * - 当前数据包该字段缺失   → 检查缓存是否在 BRACELET_HOLD_TIME 内，是则返回缓存值，否则返回 "-"
- * 每个字段独立计时，互不影响。
- */
-function resolveBraceletField(
-   cache: BraceletFieldCache,
-   field: keyof BraceletFieldCache,
-   rawValue: any,
-   now: number
-): number | string {
-   if (rawValue != null && rawValue !== "-") {
-      cache[field].value = rawValue;
-      cache[field].lastUpdateTime = now;
-      return rawValue;
-   }
-   if (now - cache[field].lastUpdateTime < BRACELET_HOLD_TIME) {
-      return cache[field].value;
-   }
-   return "-";
-}
+import { resolveBraceletField as resolveBraceletFieldWithHold } from "../../../shared/src/utils/braceletFieldHold";
 
 export const getRoomMaxPersonnel = (room: Room, roomTypes: any[], roomTemplates: any[]): number => {
    // 防御性检查：确保 roomTypes 和 roomTemplates 是数组
@@ -167,9 +115,6 @@ export const processPersonnelDeviceData = (
    let roomAndRadarData = {} as any;
    let radarData = null as any;
 
-   // 🔥 手环字段级缓存初始化
-   const braceletCache = getOrCreateBraceletCache(personnelId);
-
    if (deviceData?.devices?.radar) {
       // 处理雷达数据可能是数组或单个对象的情况
       radarData = Array.isArray(deviceData.devices.radar)
@@ -208,12 +153,12 @@ export const processPersonnelDeviceData = (
    // 🔥 扩充数据字段：信噪比（反射强度）
    const reflection = selectedRadarData && !isRadarDataExpired ? selectedRadarData.reflection : "-";
    
-   // 🔥 手环数据（带字段级缓存保持）
-   const braceletHeartRate = resolveBraceletField(braceletCache, "braceletHeartRate", braceletData?.heartRate, now);
-   const systolicPressure = resolveBraceletField(braceletCache, "systolicPressure", braceletData?.systolicPressure, now);
-   const diastolicPressure = resolveBraceletField(braceletCache, "diastolicPressure", braceletData?.diastolicPressure, now);
-   const spo2 = resolveBraceletField(braceletCache, "spo2", braceletData?.spo2 || braceletData?.bloodOxygen, now);
-   const bodyTemperature = resolveBraceletField(braceletCache, "bodyTemperature", braceletData?.bodyTemperature, now);
+   // 🔥 手环数据（带字段级缓存保持，复用公共工具）
+   const braceletHeartRate = resolveBraceletFieldWithHold(personnelId, "heartRate", braceletData?.heartRate, BRACELET_HOLD_TIME, now);
+   const systolicPressure = resolveBraceletFieldWithHold(personnelId, "systolicPressure", braceletData?.systolicPressure, BRACELET_HOLD_TIME, now);
+   const diastolicPressure = resolveBraceletFieldWithHold(personnelId, "diastolicPressure", braceletData?.diastolicPressure, BRACELET_HOLD_TIME, now);
+   const spo2 = resolveBraceletFieldWithHold(personnelId, "spo2", braceletData?.spo2 || braceletData?.bloodOxygen, BRACELET_HOLD_TIME, now);
+   const bodyTemperature = resolveBraceletFieldWithHold(personnelId, "bodyTemperature", braceletData?.bodyTemperature, BRACELET_HOLD_TIME, now);
    
    // 🔥 血氧仪数据
    const oximeterData = deviceData?.devices?.oximeter;
