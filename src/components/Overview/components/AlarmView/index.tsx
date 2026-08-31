@@ -49,7 +49,7 @@ const selectFilteredAlarms = createSelector(
       (state: RootState) => state.user.role,
       (state: RootState) => state.user.room_id,
    ],
-   (alarms, role, room_id) => alarms.filter((alarm) => role === "admin" || alarm.room_id === room_id)
+   (alarms, role, room_id) => alarms.filter((alarm) => role === "admin" || alarm.roomId === room_id)
 );
 
 const getRoomNameById = (roomId: number, rooms: Room[]) => {

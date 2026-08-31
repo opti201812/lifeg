@@ -8,7 +8,7 @@ export const ALARM_LEVEL_COLOR = ["error", "warning", "info", "success"] as cons
 
 export const RADAR_DATA_EXPIRE_TIME = 10000;
 
-export const BRACELET_HOLD_TIME = 70000;
+export const BRACELET_HOLD_TIME = 45000;
 
 export const REFRESH_INTERVAL = 5000;
 
