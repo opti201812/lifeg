@@ -140,11 +140,13 @@ export const processPersonnelDeviceData = (
    }
 
    const isRadarDataExpired = selectedRadarData ? now - selectedRadarData.timestamp > RADAR_DATA_EXPIRE_TIME : true;
-   const heartRate = braceletData
-      ? braceletData.heartRate
-      : selectedRadarData && !isRadarDataExpired
-      ? selectedRadarData.heartRate
-      : "-";
+   // 手环心率按"值"判定：对象存在但心率为 null/undefined/'-' 时不采用，回落雷达心率（雷达未过期时）
+   const heartRate =
+      braceletData?.heartRate != null && braceletData.heartRate !== "-"
+         ? braceletData.heartRate
+         : selectedRadarData && !isRadarDataExpired
+         ? selectedRadarData.heartRate
+         : "-";
    const breathRate = selectedRadarData && !isRadarDataExpired ? selectedRadarData.breathRate : "-";
    const distance = selectedRadarData && !isRadarDataExpired ? selectedRadarData.distance : "-";
    const environmentInterference =
